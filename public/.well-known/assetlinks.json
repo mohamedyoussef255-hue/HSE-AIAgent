@@ -1,1 +1,9 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.hseai_git_main_me_e177.twa",
+        "sha256_cert_fingerprints": ["26:64:78:2A:16:13:E2:AC:A4:4E:E2:D0:AC:D6:F4:AC:A6:77:26:53:8A:3E:65:27:01:E1:21:75:C0:03:28:88"]
+      }
+    }]
 
