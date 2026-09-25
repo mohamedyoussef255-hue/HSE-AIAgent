@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { AppUiCustomization, DropdownOptionsMap, Language } from '../types';
 import { AdminUiCustomizationSection } from './AdminUiCustomizationSection';
+import { StopSignLogo } from './StopSignLogo';
 
 interface SystemAdminControlPanelViewProps {
   dropdownOptions: DropdownOptionsMap;
@@ -195,8 +196,8 @@ export const SystemAdminControlPanelView: React.FC<SystemAdminControlPanelViewPr
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-purple-500/20 border-2 border-purple-400 flex items-center justify-center text-purple-300 shadow-inner shrink-0">
-              <ShieldAlert className="w-8 h-8" />
+            <div className="shrink-0 drop-shadow-xl">
+              <StopSignLogo className="w-16 h-16" withGlow />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">

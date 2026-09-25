@@ -1,0 +1,19 @@
+<svg viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="stopSignGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e51c24" />
+      <stop offset="50%" stop-color="#cc1118" />
+      <stop offset="100%" stop-color="#b30c12" />
+    </linearGradient>
+  </defs>
+  <!-- Outer Red Edge & Base Octagon -->
+  <polygon points="58.6,4 141.4,4 196,58.6 196,141.4 141.4,196 58.6,196 4,141.4 4,58.6" fill="url(#stopSignGradient)" stroke="#b30c12" stroke-width="3" stroke-linejoin="round"/>
+  <!-- Outer White Contour Stripe -->
+  <polygon points="59.5,8 140.5,8 192,59.5 192,140.5 140.5,192 59.5,192 8,140.5 8,59.5" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" opacity="0.9"/>
+  <!-- Main Inner White Octagon Border Stripe -->
+  <polygon points="62,14 138,14 186,62 186,138 138,186 62,186 14,138 14,62" fill="none" stroke="#ffffff" stroke-width="6.5" stroke-linejoin="round"/>
+  <!-- Inner Red Fill Background -->
+  <polygon points="64,18 136,18 182,64 182,136 136,182 64,182 18,136 18,64" fill="url(#stopSignGradient)"/>
+  <!-- Official Bold White "STOP" Typography -->
+  <text x="100" y="122" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="61" letter-spacing="2.5">STOP</text>
+</svg>

@@ -39,6 +39,7 @@ import { QrScanModal } from './QrScanModal';
 import { ShortVideoRecorder } from './ShortVideoRecorder';
 import { AIIncidentClassifier } from './AIIncidentClassifier';
 import { SiteWeatherRiskWidget } from './SiteWeatherRiskWidget';
+import { StopSignLogo } from './StopSignLogo';
 
 interface FieldMobileViewProps {
   onSaveObservation: (observation: StopObservation) => void;
@@ -308,14 +309,12 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             {/* Right side in RTL (The STOP logo and vertical badge block) */}
             <div className="flex items-center gap-3">
-              {/* Vertical Logo Badge Block on the Right (بالطول على اليمين) */}
-              <div className="flex flex-col items-center justify-center bg-slate-950 text-amber-400 px-3 py-2 rounded-2xl border-2 border-amber-400/60 shadow-lg shrink-0">
-                <Shield className="w-5 h-5 stroke-[2.5] mb-0.5" />
-                <span className="font-black text-xs font-mono tracking-widest leading-none">STOP</span>
-                <span className="text-[8px] font-bold text-amber-300 uppercase tracking-tighter mt-0.5">HSE</span>
+              {/* Red Octagonal STOP Sign Logo Badge */}
+              <div className="shrink-0 drop-shadow-lg">
+                <StopSignLogo className="w-12 h-12" withGlow />
               </div>
 
-                <div>
+              <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="font-black tracking-wider text-xl uppercase font-mono text-slate-950">
                     {uiConfig?.pageTitle || 'STOP'}

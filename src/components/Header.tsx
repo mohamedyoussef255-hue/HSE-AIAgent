@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { AuthUser, ColorPalette, Language, LiveIncidentStreamSession, SafetyUser, ThemeMode } from '../types';
 import { getT } from '../utils/translations';
+import { StopSignLogo } from './StopSignLogo';
 
 export type NavTab = 'field' | 'management' | 'heatmap' | 'rootcause' | 'gamification' | 'system_admin';
 
@@ -162,18 +163,16 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Brand & Secret Quick Access - Vertical layout with Logo block on the right */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* Vertical Logo Badge Block on the Right (بالطول على اليمين) */}
+            {/* Red Octagonal STOP Sign Logo Badge (Official STOP Sign) */}
             <button
               type="button"
               onClick={handleStopBrandClick}
-              className="flex flex-col items-center justify-center bg-gradient-to-b from-amber-500 to-amber-600 text-slate-950 px-3 py-2 rounded-2xl shadow-lg shadow-amber-950/40 border border-amber-400 group active:scale-95 transition-transform cursor-pointer relative shrink-0"
-              title="نقر 5 مرات يفتح لوحة تحكم مدير النظام"
+              className="group relative flex items-center justify-center active:scale-95 transition-transform cursor-pointer shrink-0 focus:outline-none"
+              title="شعار STOP الرسمي - الضغط 5 مرات يفتح لوحة تحكم مدير النظام"
             >
-              <Shield className="w-5 h-5 stroke-[2.5] mb-0.5 group-hover:rotate-12 transition-transform" />
-              <span className="font-mono font-black text-xs tracking-widest leading-none">STOP</span>
-              <span className="text-[8px] font-bold uppercase tracking-tight text-slate-950/80 mt-0.5">HSE</span>
+              <StopSignLogo className="w-12 h-12 group-hover:scale-105 transition-transform" withGlow />
               {stopClickCount > 0 && stopClickCount < 5 && (
-                <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-rose-600 text-white text-[9px] font-black rounded-full animate-bounce shadow">
+                <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-amber-400 text-slate-950 text-[10px] font-black rounded-full animate-bounce shadow-lg border border-slate-950">
                   {stopClickCount}/5
                 </span>
               )}
@@ -187,7 +186,7 @@ export const Header: React.FC<HeaderProps> = ({
                   className="group relative text-left focus:outline-none transition-transform active:scale-95 cursor-pointer"
                   title="نقر 5 مرات يفتح بوابة التحقق السريع"
                 >
-                  <h1 className="text-xl sm:text-2xl font-black tracking-wider uppercase text-slate-100 font-mono group-hover:text-amber-400 transition-colors">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-wider uppercase text-slate-100 font-mono group-hover:text-red-400 transition-colors">
                     STOP
                   </h1>
                 </button>

@@ -3,6 +3,7 @@ import { AuthUser, Language } from '../types';
 import { getT } from '../utils/translations';
 import { ShieldAlert, KeyRound, Mail, Share2, CheckCircle2, AlertCircle, X, Sparkles, MessageCircle } from 'lucide-react';
 import { INITIAL_AUTH_USERS } from '../data/advancedMockData';
+import { StopSignLogo } from './StopSignLogo';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -99,8 +100,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         </button>
 
         <div className="text-center space-y-1.5 pt-1">
-          <div className="inline-flex p-3 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-inner">
-            <ShieldAlert className="w-7 h-7" />
+          <div className="flex justify-center mb-1">
+            <StopSignLogo className="w-16 h-16" withGlow />
           </div>
           <div className="flex items-center justify-center gap-1.5">
             <Sparkles className="w-4 h-4 text-amber-400" />
