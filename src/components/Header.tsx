@@ -64,6 +64,7 @@ interface HeaderProps {
   themeMode: ThemeMode;
   colorPalette: ColorPalette;
   uiConfig?: import('../types').AppUiCustomization['headerBar'];
+  onSwitchToEmployee?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -93,10 +94,17 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenWeatherAdvisory,
   language,
   uiConfig,
+  onSwitchToEmployee,
 }) => {
   const t = getT(language);
   const [stopClickCount, setStopClickCount] = useState<number>(0);
   const [clickTimer, setClickTimer] = useState<any>(null);
+
+  // RESTRICTION: The Top Header Bar is strictly restricted to the System Admin only!
+  // Regular employees and non-system-admins will not see the top bar or its management icons.
+  if (authUser?.role !== 'SYSTEM_ADMIN') {
+    return null;
+  }
 
   const handleStopBrandClick = () => {
     const nextCount = stopClickCount + 1;
@@ -115,9 +123,9 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
-  const isSysAdmin = authUser?.role === 'SYSTEM_ADMIN';
-  const isHseDirector = authUser?.role === 'HSE_GENERAL_DIRECTOR';
-  const isHseAdmin = authUser?.role === 'HSE_ADMIN';
+  const isSysAdmin = true;
+  const isHseDirector = false;
+  const isHseAdmin = false;
 
   // System Admin Navigation Tabs
   const sysAdminTabs: { id: NavTab; label: string; icon: React.ReactNode }[] = [
@@ -127,12 +135,6 @@ export const Header: React.FC<HeaderProps> = ({
     ...(uiConfig?.showRootCauseTab !== false ? [{ id: 'rootcause' as NavTab, label: t.rootCause, icon: <BarChart3 className="w-4 h-4" /> }] : []),
     ...(uiConfig?.showHeroesTab !== false ? [{ id: 'gamification' as NavTab, label: t.safetyHeroes, icon: <Trophy className="w-4 h-4" /> }] : []),
     { id: 'system_admin' as NavTab, label: 'لوحة تحكم مدير النظام', icon: <Cpu className="w-4 h-4 text-purple-400" /> },
-  ];
-
-  // Standard Field Worker Tabs
-  const employeeTabs: { id: NavTab; label: string; icon: React.ReactNode }[] = [
-    ...(uiConfig?.showFieldTab !== false ? [{ id: 'field' as NavTab, label: t.fieldApp, icon: <Smartphone className="w-4 h-4" /> }] : []),
-    ...(uiConfig?.showHeroesTab !== false ? [{ id: 'gamification' as NavTab, label: t.safetyHeroes, icon: <Trophy className="w-4 h-4" /> }] : []),
   ];
 
   return (
@@ -245,23 +247,18 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Global Action Header Items (Context Aware) */}
         <div className="flex flex-wrap items-center gap-2 self-stretch md:self-auto justify-end">
-          {/* Quick Access & Switch to System Admin Panel (New Mode) */}
-          <button
-            type="button"
-            onClick={() => onSelectTab('system_admin')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm ${
-              currentTab === 'system_admin'
-                ? 'bg-purple-600 text-white border border-purple-400 font-black shadow-purple-950/50'
-                : 'bg-purple-950/70 hover:bg-purple-900/80 text-purple-200 border border-purple-600/50'
-            }`}
-            title="الوصول المباشر للوحة تحكم مدير النظام الجديدة واعتمادها"
-          >
-            <Cpu className="w-3.5 h-3.5 text-purple-300 animate-pulse" />
-            <span className="font-extrabold">لوحة مدير النظام الجديدة</span>
-            {currentTab === 'system_admin' && (
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-            )}
-          </button>
+          {/* Quick Switch to Field Employee Mode (Logout / Preview) */}
+          {onSwitchToEmployee && (
+            <button
+              type="button"
+              onClick={onSwitchToEmployee}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-blue-300 border border-slate-700 hover:border-blue-500/50 rounded-xl text-xs font-bold transition shadow-sm"
+              title="معاينة شاشة وتطبيق الموظف الميداني (حيث يختفي هذا الشريط العلوي تماماً وتختفي كافة أيقونات الإدارة)"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-blue-400" />
+              <span>معاينة شاشة الموظف (خروج)</span>
+            </button>
+          )}
 
           {/* Emergency Near-Miss Live Stream Button (Accessible across system) */}
           {onOpenLiveStream && (uiConfig ? uiConfig.showLiveStreamBtn : true) && (
@@ -364,249 +361,56 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* CASE A: HSE GENERAL DIRECTOR SPECIAL BAR (مسطرة مدير عام الإدارة العامة للسلامة) */}
-      {/* Strictly contains: بوت الطوارئ - مكتبة سجل رصد الكاميرا - شات السلامة الداخلى - مركز تحكم hse - خرائط النقاط الساخنة - تحليل الاسباب الجذرية - ابطال السلامة */}
+      {/* SYSTEM ADMIN MAIN NAVIGATION BAR (المسطرة الرئيسية لمدير التطبيق) */}
       {/* ========================================================================= */}
-      {isHseDirector ? (
-        <div className="bg-slate-900/90 border-t border-amber-500/30 py-2 px-4 sm:px-6">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-1.5 whitespace-nowrap">
-              {/* 1. بوت الطوارئ */}
-              {onOpenBotConfig && (uiConfig?.showEmergencyBotBtn !== false) && (
-                <button
-                  type="button"
-                  onClick={onOpenBotConfig}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30"
-                  title="بوت إدارة الطوارئ خارج أوقات العمل"
-                >
-                  <Bot className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>بوت الطوارئ</span>
-                </button>
-              )}
-
-              {/* 2. مكتبة سجل رصد الكاميرا */}
-              {onOpenHistoryLog && (uiConfig?.showCameraLibraryBtn !== false) && (
-                <button
-                  type="button"
-                  onClick={onOpenHistoryLog}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition"
-                  title="مكتبة سجل رصد الكاميرا والوسائط والوقائع الميدانية"
-                >
-                  <Video className="w-3.5 h-3.5 text-amber-400" />
-                  <span>مكتبة سجل رصد الكاميرا</span>
-                </button>
-              )}
-
-              {/* 3. شات السلامة الداخلي */}
-              {(uiConfig?.showSafetyChatBtn !== false) && (
-                <button
-                  type="button"
-                  onClick={onOpenChat}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition"
-                  title="قنوات الاتصال الميداني المباشر"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
-                  <span>شات السلامة الداخلي</span>
-                </button>
-              )}
-
-              <span className="h-5 w-px bg-slate-800 mx-1"></span>
-
-              {/* 4. مركز تحكم HSE */}
-              {(uiConfig?.showManagementTab !== false) && (
-                <button
-                  type="button"
-                  onClick={() => onSelectTab('management')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                    currentTab === 'management'
-                      ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                      : 'text-slate-300 hover:bg-slate-800'
-                  }`}
-                >
-                  <LayoutDashboard className="w-4 h-4" />
-                  <span>مركز تحكم HSE</span>
-                </button>
-              )}
-
-              {/* 5. خرائط النقاط الساخنة */}
-              {(uiConfig?.showHeatmapTab !== false) && (
-                <button
-                  type="button"
-                  onClick={() => onSelectTab('heatmap')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                    currentTab === 'heatmap'
-                      ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                      : 'text-slate-300 hover:bg-slate-800'
-                  }`}
-                >
-                  <MapPin className="w-4 h-4" />
-                  <span>خرائط النقاط الساخنة</span>
-                </button>
-              )}
-
-              {/* 6. تحليل الأسباب الجذرية */}
-              {(uiConfig?.showRootCauseTab !== false) && (
-                <button
-                  type="button"
-                  onClick={() => onSelectTab('rootcause')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                    currentTab === 'rootcause'
-                      ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                      : 'text-slate-300 hover:bg-slate-800'
-                  }`}
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  <span>تحليل الأسباب الجذرية</span>
-                </button>
-              )}
-
-              {/* 7. أبطال السلامة */}
-              {(uiConfig?.showHeroesTab !== false) && (
-                <button
-                  type="button"
-                  onClick={() => onSelectTab('gamification')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                    currentTab === 'gamification'
-                      ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                      : 'text-slate-300 hover:bg-slate-800'
-                  }`}
-                >
-                  <Trophy className="w-4 h-4" />
-                  <span>أبطال السلامة</span>
-                </button>
-              )}
-            </div>
-
-            {/* Quick Field App preview for General Director if desired */}
-            {(uiConfig?.showFieldTab !== false) && (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar py-1.5 border-t border-slate-900">
+        <div className="flex items-center gap-1.5">
+          {sysAdminTabs.map((tab) => {
+            const isActive = currentTab === tab.id;
+            return (
               <button
+                key={tab.id}
                 type="button"
-                onClick={() => onSelectTab('field')}
-                className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold transition ${
-                  currentTab === 'field'
-                    ? 'bg-slate-800 text-amber-300 border-amber-500/40'
-                    : 'text-slate-400 border-transparent hover:text-slate-200'
+                onClick={() => onSelectTab(tab.id)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  isActive
+                    ? tab.id === 'system_admin'
+                      ? 'bg-purple-600 text-white shadow-md font-black'
+                      : 'bg-amber-500 text-slate-950 shadow-md font-black'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
                 }`}
               >
-                استمارة الرصد الميداني
+                {tab.icon}
+                <span>{tab.label}</span>
               </button>
-            )}
+            );
+          })}
+        </div>
 
-            {/* Quick Access to System Admin Panel */}
+        <div className="flex items-center gap-2">
+          {onOpenHistoryLog && (uiConfig?.showCameraLibraryBtn !== false) && (
             <button
               type="button"
-              onClick={() => onSelectTab('system_admin')}
-              className="text-[11px] px-3 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-400/50 font-bold transition flex items-center gap-1.5 shadow"
-              title="الانتقال إلى لوحة تحكم مدير النظام الجديدة واعتمادها"
+              onClick={onOpenHistoryLog}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition whitespace-nowrap"
             >
-              <Cpu className="w-3.5 h-3.5 text-purple-300" />
-              <span>لوحة مدير النظام الجديدة</span>
+              <Video className="w-3.5 h-3.5 text-amber-400" />
+              <span>مكتبة سجل رصد الكاميرا</span>
             </button>
-          </div>
+          )}
+
+          {(uiConfig?.showSafetyChatBtn !== false) && (
+            <button
+              type="button"
+              onClick={onOpenChat}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition whitespace-nowrap"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+              <span>الشات</span>
+            </button>
+          )}
         </div>
-      ) : isSysAdmin ? (
-        /* ========================================================================= */
-        /* CASE B: SYSTEM ADMIN MAIN NAVIGATION BAR (المسطرة الرئيسية لمدير التطبيق) */
-        /* ========================================================================= */
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar py-1.5 border-t border-slate-900">
-          <div className="flex items-center gap-1.5">
-            {sysAdminTabs.map((tab) => {
-              const isActive = currentTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => onSelectTab(tab.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                    isActive
-                      ? tab.id === 'system_admin'
-                        ? 'bg-purple-600 text-white shadow-md font-black'
-                        : 'bg-amber-500 text-slate-950 shadow-md font-black'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-                  }`}
-                >
-                  {tab.icon}
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {onOpenHistoryLog && (uiConfig?.showCameraLibraryBtn !== false) && (
-              <button
-                type="button"
-                onClick={onOpenHistoryLog}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition whitespace-nowrap"
-              >
-                <Video className="w-3.5 h-3.5 text-amber-400" />
-                <span>مكتبة سجل رصد الكاميرا</span>
-              </button>
-            )}
-
-            {(uiConfig?.showSafetyChatBtn !== false) && (
-              <button
-                type="button"
-                onClick={onOpenChat}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition whitespace-nowrap"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
-                <span>الشات</span>
-              </button>
-            )}
-          </div>
-        </div>
-      ) : (
-        /* ========================================================================= */
-        /* CASE C: EMPLOYEE & FIELD WORKERS NAVIGATION BAR (شريط العاملين) */
-        /* ========================================================================= */
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar py-1.5 border-t border-slate-900">
-          <div className="flex items-center gap-1.5">
-            {employeeTabs.map((tab) => {
-              const isActive = currentTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => onSelectTab(tab.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                    isActive
-                      ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-                  }`}
-                >
-                  {tab.icon}
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {onOpenHistoryLog && (uiConfig?.showCameraLibraryBtn !== false) && (
-              <button
-                type="button"
-                onClick={onOpenHistoryLog}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition"
-              >
-                <Video className="w-3.5 h-3.5 text-amber-400" />
-                <span>مكتبة سجل رصد الكاميرا</span>
-              </button>
-            )}
-
-            {(uiConfig?.showSafetyChatBtn !== false) && (
-              <button
-                type="button"
-                onClick={onOpenChat}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
-                <span>شات السلامة</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      </div>
     </header>
   );
 };

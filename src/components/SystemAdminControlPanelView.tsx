@@ -21,6 +21,7 @@ import {
   Award,
   CloudSun,
   LayoutDashboard,
+  Smartphone,
 } from 'lucide-react';
 import { AppUiCustomization, DropdownOptionsMap, Language } from '../types';
 import { AdminUiCustomizationSection } from './AdminUiCustomizationSection';
@@ -42,6 +43,7 @@ interface SystemAdminControlPanelViewProps {
   uiCustomization?: AppUiCustomization;
   onUpdateUiCustomization?: (newConfig: AppUiCustomization) => void;
   onResetUiCustomization?: () => void;
+  onSwitchToEmployee?: () => void;
 }
 
 export const SystemAdminControlPanelView: React.FC<SystemAdminControlPanelViewProps> = ({
@@ -60,6 +62,7 @@ export const SystemAdminControlPanelView: React.FC<SystemAdminControlPanelViewPr
   uiCustomization,
   onUpdateUiCustomization,
   onResetUiCustomization,
+  onSwitchToEmployee,
 }) => {
   const [radarSensitivity, setRadarSensitivity] = useState(85);
   const [thermalThreshold, setThermalThreshold] = useState(68);
@@ -175,6 +178,18 @@ export const SystemAdminControlPanelView: React.FC<SystemAdminControlPanelViewPr
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
             <span>{adoptedNotice ? '✓ تم تأكيد واعتماد الوضع الجديد!' : 'تأكيد اعتماد الوضع الجديد'}</span>
           </button>
+
+          {onSwitchToEmployee && (
+            <button
+              type="button"
+              onClick={onSwitchToEmployee}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-blue-300 border border-slate-700 hover:border-blue-500/50 text-xs font-bold transition group"
+              title="معاينة شاشة الموظف الميداني (حيث يختفي هذا الشريط العلوي تماماً وتختفي كافة أيقونات الإدارة)"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-blue-400" />
+              <span>معاينة شاشة الموظف (خروج)</span>
+            </button>
+          )}
 
           {onBack && (
             <button

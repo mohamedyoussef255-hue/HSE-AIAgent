@@ -55,6 +55,7 @@ interface FieldMobileViewProps {
   language?: Language;
   currentUserRole?: UserRole;
   uiConfig?: AppUiCustomization['workerPage'];
+  onOpenAdminLogin?: () => void;
 }
 
 export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
@@ -71,9 +72,31 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
   language = 'ar',
   currentUserRole = 'EMPLOYEE',
   uiConfig,
+  onOpenAdminLogin,
 }) => {
   const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
+  const [stopClickCount, setStopClickCount] = useState<number>(0);
+  const [clickTimer, setClickTimer] = useState<any>(null);
+
+  const handleStopBrandClick = () => {
+    if (!onOpenAdminLogin) return;
+    const nextCount = stopClickCount + 1;
+    setStopClickCount(nextCount);
+
+    if (clickTimer) clearTimeout(clickTimer);
+
+    if (nextCount >= 5) {
+      setStopClickCount(0);
+      onOpenAdminLogin();
+    } else {
+      const timer = setTimeout(() => {
+        setStopClickCount(0);
+      }, 3000);
+      setClickTimer(timer);
+    }
+  };
+
   const [observerRole, setObserverRole] = useState<'EMPLOYEE' | 'HSE_OFFICER'>(
     currentUserRole === 'HSE_ADMIN' || currentUserRole === 'HSE_GENERAL_DIRECTOR' || currentUserRole === 'HSE_OFFICER'
       ? 'HSE_OFFICER'
@@ -309,10 +332,20 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             {/* Right side in RTL (The STOP logo and vertical badge block) */}
             <div className="flex items-center gap-3">
-              {/* Red Octagonal STOP Sign Logo Badge */}
-              <div className="shrink-0 drop-shadow-lg">
+              {/* Red Circular STOP Sign Logo Badge - 5 clicks open secret Admin Login Gate */}
+              <button
+                type="button"
+                onClick={handleStopBrandClick}
+                className="shrink-0 drop-shadow-lg relative focus:outline-none cursor-pointer active:scale-95 transition-transform"
+                title="STOP - نقر 5 مرات يفتح نافذة الدخول للإدارة"
+              >
                 <StopSignLogo className="w-12 h-12" withGlow />
-              </div>
+                {stopClickCount > 0 && stopClickCount < 5 && (
+                  <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-slate-950 text-amber-400 text-[10px] font-black rounded-full animate-bounce shadow border border-amber-400">
+                    {stopClickCount}/5
+                  </span>
+                )}
+              </button>
 
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -378,7 +411,7 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
                 </button>
               )}
 
-              {onBack && (
+              {onBack && currentUserRole === 'SYSTEM_ADMIN' && (
                 <button
                   type="button"
                   onClick={onBack}

@@ -265,6 +265,23 @@ export default function App() {
     } catch (_) {}
   };
 
+  const handleSwitchToEmployee = () => {
+    const employeeUser = INITIAL_AUTH_USERS.find((u) => u.role === 'EMPLOYEE') || {
+      id: 'USR-EMP-WORKER-01',
+      name: 'حسن عبد العال الشربيني (فني تشغيل وتعبئة - موظف إنتاج)',
+      badgeNumber: 'EMP-OPER-402',
+      email: 'hassan.ops@company.com',
+      role: 'EMPLOYEE' as const,
+      department: 'عمليات التشغيل ومضخات التعبئة الميدانية',
+    };
+    setAuthUser(employeeUser);
+    setCurrentTab('field');
+    try {
+      localStorage.setItem(STORAGE_KEY_CURRENT_TAB, 'field');
+      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(employeeUser));
+    } catch (_) {}
+  };
+
   // Pre-fill state for observation from AI Radar
   const [radarPreFillData, setRadarPreFillData] = useState<Partial<StopObservation> | null>(null);
 
@@ -593,11 +610,12 @@ export default function App() {
         themeMode={themeMode}
         colorPalette={colorPalette}
         uiConfig={uiCustomization.headerBar}
+        onSwitchToEmployee={handleSwitchToEmployee}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
-        {currentTab === 'field' && (
+        {(currentTab === 'field' || authUser?.role === 'EMPLOYEE') && (
           <FieldMobileView
             onSaveObservation={handleSaveObservation}
             isOffline={isOffline}
@@ -612,10 +630,11 @@ export default function App() {
             language={language}
             currentUserRole={authUser?.role || 'EMPLOYEE'}
             uiConfig={uiCustomization.workerPage}
+            onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
           />
         )}
 
-        {currentTab === 'management' && (
+        {currentTab === 'management' && authUser?.role !== 'EMPLOYEE' && (
           <WebManagementView
             observations={observations}
             onUpdateObservation={handleUpdateObservation}
@@ -623,23 +642,23 @@ export default function App() {
             onOpenDropdownManager={authUser?.role === 'SYSTEM_ADMIN' ? () => setIsDropdownManagerOpen(true) : undefined}
             isOffHoursSimulated={isOffHoursSimulated}
             uiConfig={uiCustomization.directorPage}
-            onSwitchToSystemAdmin={() => handleSelectTab('system_admin')}
+            onSwitchToSystemAdmin={authUser?.role === 'SYSTEM_ADMIN' ? () => handleSelectTab('system_admin') : undefined}
           />
         )}
 
-        {currentTab === 'heatmap' && (
+        {currentTab === 'heatmap' && authUser?.role !== 'EMPLOYEE' && (
           <HotspotHeatmapView stations={stations} observations={observations} />
         )}
 
-        {currentTab === 'rootcause' && (
+        {currentTab === 'rootcause' && authUser?.role !== 'EMPLOYEE' && (
           <RootCauseAnalyticsView observations={observations} />
         )}
 
-        {currentTab === 'gamification' && (
+        {currentTab === 'gamification' && authUser?.role !== 'EMPLOYEE' && (
           <GamificationView users={INITIAL_USERS} currentUser={currentUser} />
         )}
 
-        {currentTab === 'system_admin' && (
+        {currentTab === 'system_admin' && authUser?.role === 'SYSTEM_ADMIN' && (
           <SystemAdminControlPanelView
             dropdownOptions={dropdownOptions}
             onOpenDropdownManager={() => setIsDropdownManagerOpen(true)}
@@ -660,6 +679,7 @@ export default function App() {
             uiCustomization={uiCustomization}
             onUpdateUiCustomization={(updated) => setUiCustomization(updated)}
             onResetUiCustomization={handleResetUiCustomization}
+            onSwitchToEmployee={handleSwitchToEmployee}
           />
         )}
       </main>
