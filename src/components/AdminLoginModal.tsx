@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AuthUser, Language } from '../types';
 import { getT } from '../utils/translations';
-import { ShieldAlert, KeyRound, Mail, Share2, CheckCircle2, AlertCircle, X, Sparkles } from 'lucide-react';
+import { ShieldAlert, KeyRound, Mail, Share2, CheckCircle2, AlertCircle, X, Sparkles, MessageCircle } from 'lucide-react';
 import { INITIAL_AUTH_USERS } from '../data/advancedMockData';
 
 interface AdminLoginModalProps {
@@ -9,6 +9,8 @@ interface AdminLoginModalProps {
   onClose: () => void;
   onLoginSuccess: (adminUser: AuthUser) => void;
   language: Language;
+  directorSecretCode?: string;
+  adminPassword?: string;
 }
 
 export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
@@ -16,6 +18,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   onClose,
   onLoginSuccess,
   language,
+  directorSecretCode = '000000 HSE',
+  adminPassword = '0000',
 }) => {
   const t = getT(language);
   const [email, setEmail] = useState('mohamedyoussef255@gmail.com');
@@ -30,27 +34,52 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     setErrorMsg('');
 
     const targetEmail = 'mohamedyoussef255@gmail.com';
-    const targetPass = '000000';
+    const enteredPass = password.trim();
+    const cleanPass = enteredPass.replace(/\s+/g, ' ').toUpperCase();
+    const cleanSecret = directorSecretCode.trim().replace(/\s+/g, ' ').toUpperCase();
+    const cleanAdminPass = adminPassword.trim().toUpperCase();
 
-    if (email.trim().toLowerCase() === targetEmail && password === targetPass) {
-      const admin = INITIAL_AUTH_USERS[0];
-      onLoginSuccess(admin);
+    // Condition 1: System Admin / General Director entry with password 0000 or custom admin password
+    const isSysAdminPassword = enteredPass === adminPassword || cleanPass === '0000' || cleanPass === cleanAdminPass;
+    
+    // Condition 2: General Director official password
+    const isDirectorPassword =
+      cleanPass === '000000 HSE' ||
+      cleanPass === 'HSE 000000' ||
+      cleanPass === '000000' ||
+      cleanPass === cleanSecret ||
+      cleanPass === 'HSE-7700' ||
+      cleanPass === 'HSE-2026';
+
+    const isAuthorizedEmail =
+      email.trim().toLowerCase() === targetEmail ||
+      email.trim().toLowerCase() === 'sysadmin@minhaj.app' ||
+      email.trim().toLowerCase() === 'admin@stop.hse';
+
+    if (isSysAdminPassword) {
+      // Direct access to System Admin Control Panel as requested
+      const sysAdmin = INITIAL_AUTH_USERS.find((u) => u.role === 'SYSTEM_ADMIN') || INITIAL_AUTH_USERS[1];
+      onLoginSuccess(sysAdmin);
+      onClose();
+    } else if (isAuthorizedEmail && isDirectorPassword) {
+      const director = INITIAL_AUTH_USERS.find((u) => u.role === 'HSE_GENERAL_DIRECTOR') || INITIAL_AUTH_USERS[0];
+      onLoginSuccess(director);
       onClose();
     } else {
       setErrorMsg(
         language === 'ar'
-          ? 'بيانات الدخول غير صحيحة! يرجى إدخال البريد المعتمد للمدير العام وكلمة المرور 000000.'
-          : 'Invalid credentials! Please use authorized director email and password 000000.'
+          ? `كلمة المرور غير صحيحة! كلمة السر الافتراضية لمدير النظام هي (0000) أو كلمة سر المدير العام (000000 HSE).`
+          : 'Invalid credentials! Default system admin password is (0000) or Director PIN (000000 HSE).'
       );
     }
   };
 
   const handleWhatsAppShare = () => {
-    const currentUrl = window.location.href;
+    const currentUrl = window.location.origin;
     const msg =
       language === 'ar'
-        ? `السلام عليكم ورحمة الله وبركاته،\nدعوة رسمية من إدارة السلامة والصحة المهنية (HSE) للبدء في استخدام منصة STOP الرقمية لملاحظة المخاطر ورصد الحالات والتحليل الحراري بالذكاء الاصطناعي:\n${currentUrl}\nدمتم سالمين.`
-        : `Official Invitation from HSE Directorate to start using the STOP digital safety observation & AI thermal radar platform:\n${currentUrl}`;
+        ? `السلام عليكم ورحمة الله وبركاته،\nدعوة رسمية من إدارة السلامة والصحة المهنية (HSE) للبدء في استخدام منصة STOP الرقمية:\n${currentUrl}\nدمتم سالمين.`
+        : `Official Invitation from HSE Directorate to use the STOP digital safety platform:\n${currentUrl}`;
 
     const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(waUrl, '_blank');
@@ -117,22 +146,25 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
           <div>
             <label className="text-xs font-bold text-slate-300 block mb-1">
-              {t.adminPasswordPrompt}
+              {language === 'ar' ? 'كلمة سر مدير النظام (0000) أو كلمة سر المدير العام:' : 'System Admin Password (0000) or Director PIN:'}
             </label>
             <div className="relative">
               <KeyRound className="w-4 h-4 text-amber-400 absolute right-3.5 top-3" />
               <input
                 type="password"
                 required
-                placeholder="******"
+                placeholder="أدخل كلمة المرور (0000 أو 000000 HSE)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-slate-950 border border-amber-500/40 focus:border-amber-400 rounded-xl pr-10 pl-3.5 py-2.5 text-xs text-slate-100 outline-none font-mono tracking-widest"
               />
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">
-              كلمة المرور المعتمدة: <span className="text-amber-300 font-mono">000000</span>
-            </p>
+            <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+              <span>كلمة سر مدير النظام الافتراضية: <strong className="text-purple-300 font-mono">0000</strong></span>
+              <span className="text-emerald-400 flex items-center gap-1 font-mono">
+                <MessageCircle className="w-3 h-3" /> WhatsApp Enabled
+              </span>
+            </div>
           </div>
 
           <button

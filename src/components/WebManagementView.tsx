@@ -25,8 +25,10 @@ import {
   Bot,
   ListFilter,
   Video,
+  ArrowRight,
+  KeyRound,
 } from 'lucide-react';
-import { ReportStatus, SeverityLevel, StopObservation } from '../types';
+import { AppUiCustomization, ReportStatus, SeverityLevel, StopObservation } from '../types';
 import { exportToCSV, printExecutiveReport } from '../utils/exportUtils';
 import { TimeToClosureWidget } from './TimeToClosureWidget';
 
@@ -36,6 +38,10 @@ interface WebManagementViewProps {
   onOpenBotConfig?: () => void;
   onOpenDropdownManager?: () => void;
   isOffHoursSimulated?: boolean;
+  onBack?: () => void;
+  onOpenChangePassword?: () => void;
+  uiConfig?: AppUiCustomization['directorPage'];
+  onSwitchToSystemAdmin?: () => void;
 }
 
 export const WebManagementView: React.FC<WebManagementViewProps> = ({
@@ -44,6 +50,10 @@ export const WebManagementView: React.FC<WebManagementViewProps> = ({
   onOpenBotConfig,
   onOpenDropdownManager,
   isOffHoursSimulated,
+  onBack,
+  onOpenChangePassword,
+  uiConfig,
+  onSwitchToSystemAdmin,
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
@@ -111,221 +121,305 @@ export const WebManagementView: React.FC<WebManagementViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Quick Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-sm">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <h2 className="text-xl font-black text-slate-100">
-              لوحة التحكم والإدارة العليا - STOP (Safety Training Observation Program)
-            </h2>
+      {/* Return to New Modern System Admin Panel Banner */}
+      {onSwitchToSystemAdmin && (
+        <div className="bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 p-4 rounded-2xl border-2 border-purple-500/60 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center justify-center shrink-0">
+              <Cpu className="w-5 h-5 text-purple-300 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-white text-sm">
+                  لوحة تحكم مدير النظام المتطورة (الوضع الجديد المعتمَد)
+                </span>
+                <span className="text-[10px] font-bold bg-purple-500/30 text-purple-200 border border-purple-400/40 px-2 py-0.5 rounded-full">
+                  النسخة المحدثة 2026
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                تتضمن محرر تخصيص الواجهات الشامل، إظهار وإخفاء كافة الصفحات والأيقونات، وتعديل المحتوى.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-slate-400">
-            متابعة البلاغات، أتمتة التوجيه للورديات، الرقابة على المخاطر الحرجة وإغلاق الملاحظات
-          </p>
+          <button
+            type="button"
+            onClick={onSwitchToSystemAdmin}
+            className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-lg shadow-purple-950/50 transition flex items-center justify-center gap-2 shrink-0 active:scale-95"
+          >
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span>العودة للوضع الجديد واعتماده ➔</span>
+          </button>
         </div>
+      )}
 
-        {/* 1-Click Export Buttons & Admin Control Centers */}
-        <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-auto">
-          {onOpenBotConfig && (
+      {/* Universal Page Back / Exit & Director Password Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-3 rounded-2xl shadow-sm">
+        <div className="flex items-center gap-2">
+          {onBack && (
             <button
               type="button"
-              onClick={onOpenBotConfig}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border transition shadow-sm ${
-                isOffHoursSimulated
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30'
-                  : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-              }`}
+              onClick={onBack}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition group"
             >
-              <Bot className="w-4 h-4 text-emerald-400" />
-              <span>بوت طوارئ خارج أوقات العمل</span>
-              {isOffHoursSimulated && (
-                <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
-              )}
+              <ArrowRight className="w-4 h-4 rtl:rotate-0 ltr:rotate-180 group-hover:-translate-x-1 transition-transform" />
+              <span>تراجع / رجوع للصفحة الرئيسية</span>
             </button>
           )}
 
-          {onOpenDropdownManager && (
-            <button
-              type="button"
-              onClick={onOpenDropdownManager}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition-colors shadow-sm"
-            >
-              <ListFilter className="w-4 h-4 text-amber-400" />
-              <span>تعديل القوائم المنسدلة</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => exportToCSV(observations)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition-colors shadow-sm"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-            <span>تصدير Excel (CSV)</span>
-          </button>
-          <button
-            type="button"
-            onClick={printExecutiveReport}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold shadow transition-colors"
-          >
-            <Printer className="w-4 h-4" />
-            <span>طباعة تقرير الإدارة (PDF)</span>
-          </button>
+          <div className="text-xs text-slate-400">
+            أنت الآن في: <strong className="text-amber-400">لوحة القيادة والمتابعة العليا (HSE Management)</strong>
+          </div>
         </div>
+
+        {onOpenChangePassword && (uiConfig ? uiConfig.showChangePasswordBtn : true) && (
+          <button
+            type="button"
+            onClick={onOpenChangePassword}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 text-xs font-bold transition shadow-sm"
+          >
+            <KeyRound className="w-4 h-4 text-amber-400" />
+            <span>تغيير كلمة السر الخاصة بي (HSE Director PIN)</span>
+          </button>
+        )}
       </div>
+
+      {/* Top Banner & Quick Actions */}
+      {(uiConfig ? uiConfig.showExecutiveSummary : true) && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-sm">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <h2 className="text-xl font-black text-slate-100">
+                {uiConfig?.pageTitle || 'لوحة التحكم والإدارة العليا - STOP'}
+              </h2>
+            </div>
+            <p className="text-xs text-slate-400">
+              {uiConfig?.pageSubtitle || 'متابعة البلاغات، أتمتة التوجيه للورديات، الرقابة على المخاطر الحرجة وإغلاق الملاحظات'}
+            </p>
+          </div>
+
+          {/* 1-Click Export Buttons & Admin Control Centers */}
+          <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-auto">
+            {onOpenBotConfig && (uiConfig ? uiConfig.showEmergencyBotBtn : true) && (
+              <button
+                type="button"
+                onClick={onOpenBotConfig}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border transition shadow-sm ${
+                  isOffHoursSimulated
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                }`}
+              >
+                <Bot className="w-4 h-4 text-emerald-400" />
+                <span>بوت طوارئ خارج أوقات العمل</span>
+                {isOffHoursSimulated && (
+                  <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
+                )}
+              </button>
+            )}
+
+            {onOpenDropdownManager && (uiConfig ? uiConfig.showDropdownManagerBtn : true) && (
+              <button
+                type="button"
+                onClick={onOpenDropdownManager}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition-colors shadow-sm"
+              >
+                <ListFilter className="w-4 h-4 text-amber-400" />
+                <span>تعديل القوائم المنسدلة</span>
+              </button>
+            )}
+
+            {(uiConfig ? uiConfig.showExportExcelBtn : true) && (
+              <button
+                type="button"
+                onClick={() => exportToCSV(observations)}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition-colors shadow-sm"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                <span>تصدير Excel (CSV)</span>
+              </button>
+            )}
+
+            {(uiConfig ? uiConfig.showPrintReportBtn : true) && (
+              <button
+                type="button"
+                onClick={printExecutiveReport}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold shadow transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                <span>طباعة تقرير الإدارة (PDF)</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Total Cards */}
-        <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
-          <div>
-            <span className="text-xs text-slate-400 font-medium block">إجمالي بطاقات STOP</span>
-            <span className="text-2xl font-black text-slate-100 font-mono mt-1 block">
-              {totalCount}
-            </span>
-            <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-1">
-              محدثة لحظياً من الميدان
-            </span>
-          </div>
-          <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
-            <Shield className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Critical Open Hazards */}
-        <div className="bg-slate-900/80 p-4 rounded-2xl border border-rose-950/60 flex items-center justify-between">
-          <div>
-            <span className="text-xs text-rose-300 font-medium block">مخاطر حرجة مفتوحة</span>
-            <span className="text-2xl font-black text-rose-400 font-mono mt-1 block">
-              {criticalCount}
-            </span>
-            <span className="text-[10px] text-rose-400/90 flex items-center gap-1 mt-1 font-semibold">
-              <AlertTriangle className="w-3 h-3" /> تم تصعيدها فورياً
-            </span>
-          </div>
-          <div className="p-3 bg-rose-500/10 text-rose-400 rounded-xl border border-rose-500/20">
-            <Flame className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Unsafe Acts vs Conditions Ratio */}
-        <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
-          <div>
-            <span className="text-xs text-slate-400 font-medium block">تصرفات / حالات غير آمنة</span>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-black text-amber-400 font-mono">{unsafeActsCount}</span>
-              <span className="text-xs text-slate-500 font-mono">سلوك</span>
-              <span className="text-slate-600">/</span>
-              <span className="text-xl font-bold text-sky-400 font-mono">{unsafeConditionsCount}</span>
-              <span className="text-xs text-slate-500 font-mono">حالة</span>
+      {(uiConfig ? uiConfig.showKpiCards : true) && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Total Cards */}
+          <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-slate-400 font-medium block">إجمالي بطاقات STOP</span>
+              <span className="text-2xl font-black text-slate-100 font-mono mt-1 block">
+                {totalCount}
+              </span>
+              <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-1">
+                محدثة لحظياً من الميدان
+              </span>
             </div>
-            <span className="text-[10px] text-slate-400 mt-1 block">
-              وفق معايير STOP العالمية
-            </span>
+            <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+              <Shield className="w-6 h-6" />
+            </div>
           </div>
-          <div className="p-3 bg-sky-500/10 text-sky-400 rounded-xl border border-sky-500/20">
-            <ShieldAlert className="w-6 h-6" />
-          </div>
-        </div>
 
-        {/* Closure Rate */}
-        <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
-          <div>
-            <span className="text-xs text-slate-400 font-medium block">معدل الإغلاق والتحقق</span>
-            <span className="text-2xl font-black text-emerald-400 font-mono mt-1 block">
-              {closureRate}%
-            </span>
-            <span className="text-[10px] text-emerald-400/80 flex items-center gap-1 mt-1">
-              {closedCount} من أصل {totalCount} بطاقة
-            </span>
+          {/* Critical Open Hazards */}
+          <div className="bg-slate-900/80 p-4 rounded-2xl border border-rose-950/60 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-rose-300 font-medium block">مخاطر حرجة مفتوحة</span>
+              <span className="text-2xl font-black text-rose-400 font-mono mt-1 block">
+                {criticalCount}
+              </span>
+              <span className="text-[10px] text-rose-400/90 flex items-center gap-1 mt-1 font-semibold">
+                <AlertTriangle className="w-3 h-3" /> تم تصعيدها فورياً
+              </span>
+            </div>
+            <div className="p-3 bg-rose-500/10 text-rose-400 rounded-xl border border-rose-500/20">
+              <Flame className="w-6 h-6" />
+            </div>
           </div>
-          <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
-            <CheckCircle2 className="w-6 h-6" />
+
+          {/* Unsafe Acts vs Conditions Ratio */}
+          <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-slate-400 font-medium block">تصرفات / حالات غير آمنة</span>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-black text-amber-400 font-mono">{unsafeActsCount}</span>
+                <span className="text-xs text-slate-500 font-mono">سلوك</span>
+                <span className="text-slate-600">/</span>
+                <span className="text-xl font-bold text-sky-400 font-mono">{unsafeConditionsCount}</span>
+                <span className="text-xs text-slate-500 font-mono">حالة</span>
+              </div>
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                وفق معايير STOP العالمية
+              </span>
+            </div>
+            <div className="p-3 bg-sky-500/10 text-sky-400 rounded-xl border border-sky-500/20">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+          </div>
+
+          {/* Closure Rate */}
+          <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-slate-400 font-medium block">معدل الإغلاق والتحقق</span>
+              <span className="text-2xl font-black text-emerald-400 font-mono mt-1 block">
+                {closureRate}%
+              </span>
+              <span className="text-[10px] text-emerald-400/80 flex items-center gap-1 mt-1">
+                {closedCount} من أصل {totalCount} بطاقة
+              </span>
+            </div>
+            <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* D3 High-Level KPI: Time to Closure across Departments & Bottlenecks */}
-      <TimeToClosureWidget
-        observations={observations}
-        onFilterByDepartment={(dept) => {
-          setSearchTerm(dept);
-        }}
-      />
+      {(uiConfig ? uiConfig.showTimeToClosureWidget : true) && (
+        <TimeToClosureWidget
+          observations={observations}
+          onFilterByDepartment={(dept) => {
+            setSearchTerm(dept);
+          }}
+        />
+      )}
 
       {/* Filter and Search Bar */}
-      <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-3">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          {/* Search box */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="ابحث برقم البطاقة، وصف الملاحظة، المعدة، أو اسم المفتش..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pr-10 pl-4 py-2.5 text-xs text-slate-200 placeholder:text-slate-500 focus:border-amber-500 outline-none"
-            />
+      {(uiConfig ? (uiConfig.showSearchBar || uiConfig.showSeverityFilter || uiConfig.showStatusFilter || uiConfig.showTypeFilter) : true) && (
+        <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-3">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            {/* Search box */}
+            {(uiConfig ? uiConfig.showSearchBar : true) && (
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="ابحث برقم البطاقة، وصف الملاحظة، المعدة، أو اسم المفتش..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pr-10 pl-4 py-2.5 text-xs text-slate-200 placeholder:text-slate-500 focus:border-amber-500 outline-none"
+                />
+              </div>
+            )}
+
+            {/* Quick Filters */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Severity Filter */}
+              {(uiConfig ? uiConfig.showSeverityFilter : true) && (
+                <select
+                  value={filterSeverity}
+                  onChange={(e) => setFilterSeverity(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:border-amber-500 outline-none"
+                >
+                  <option value="all">كل مستويات الخطورة</option>
+                  <option value="high">حرج (Critical)</option>
+                  <option value="medium">متوسط (Medium)</option>
+                  <option value="low">منخفض (Low)</option>
+                </select>
+              )}
+
+              {/* Type Filter */}
+              {(uiConfig ? uiConfig.showTypeFilter : true) && (
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:border-amber-500 outline-none"
+                >
+                  <option value="all">كل أنواع STOP</option>
+                  <option value="act">تصرف غير آمن (Unsafe Act)</option>
+                  <option value="condition">حالة غير آمنة (Unsafe Condition)</option>
+                  <option value="safe">ممارسة آمنة (Safe Practice)</option>
+                </select>
+              )}
+
+              {/* Status Filter */}
+              {(uiConfig ? uiConfig.showStatusFilter : true) && (
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:border-amber-500 outline-none"
+                >
+                  <option value="all">كل الحالات</option>
+                  <option value="جديد (New)">جديد</option>
+                  <option value="قيد المعالجة (In Progress)">قيد المعالجة</option>
+                  <option value="تم التوجيه للصيانة (Assigned)">تم التوجيه للصيانة</option>
+                  <option value="تم الإغلاق والتحقق (Closed)">تم الإغلاق والتحقق</option>
+                </select>
+              )}
+            </div>
           </div>
 
-          {/* Quick Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Severity Filter */}
-            <select
-              value={filterSeverity}
-              onChange={(e) => setFilterSeverity(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:border-amber-500 outline-none"
-            >
-              <option value="all">كل مستويات الخطورة</option>
-              <option value="high">حرج (Critical)</option>
-              <option value="medium">متوسط (Medium)</option>
-              <option value="low">منخفض (Low)</option>
-            </select>
-
-            {/* Type Filter */}
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:border-amber-500 outline-none"
-            >
-              <option value="all">كل أنواع STOP</option>
-              <option value="act">تصرف غير آمن (Unsafe Act)</option>
-              <option value="condition">حالة غير آمنة (Unsafe Condition)</option>
-              <option value="safe">ممارسة آمنة (Safe Practice)</option>
-            </select>
-
-            {/* Status Filter */}
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:border-amber-500 outline-none"
-            >
-              <option value="all">كل الحالات</option>
-              <option value="جديد (New)">جديد</option>
-              <option value="قيد المعالجة (In Progress)">قيد المعالجة</option>
-              <option value="تم التوجيه للصيانة (Assigned)">تم التوجيه للصيانة</option>
-              <option value="تم الإغلاق والتحقق (Closed)">تم الإغلاق والتحقق</option>
-            </select>
+          {/* Active Automated Routing Highlights */}
+          <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              أتمتة سير العمل النشطة:
+              <strong className="text-slate-200">التصرفات السلوكية ➔ مشرف الوردية</strong> |{' '}
+              <strong className="text-rose-400">الحالات الحرجة ➔ تنبيه فوري للصيانة ومدير السلامة</strong>
+            </span>
+            <span className="text-[11px] font-mono text-slate-500">
+              عدد البلاغات المطابقة: {filtered.length}
+            </span>
           </div>
         </div>
-
-        {/* Active Automated Routing Highlights */}
-        <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-400" />
-            أتمتة سير العمل النشطة:
-            <strong className="text-slate-200">التصرفات السلوكية ➔ مشرف الوردية</strong> |{' '}
-            <strong className="text-rose-400">الحالات الحرجة ➔ تنبيه فوري للصيانة ومدير السلامة</strong>
-          </span>
-          <span className="text-[11px] font-mono text-slate-500">
-            عدد البلاغات المطابقة: {filtered.length}
-          </span>
-        </div>
-      </div>
+      )}
 
       {/* Observations Table */}
-      <div className="bg-slate-900/90 rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
+      {(uiConfig ? uiConfig.showObservationsTable : true) && (
         <div className="overflow-x-auto">
           <table className="w-full text-right text-xs">
             <thead className="bg-slate-950/80 text-slate-400 border-b border-slate-800 font-semibold">
@@ -461,7 +555,7 @@ export const WebManagementView: React.FC<WebManagementViewProps> = ({
             </tbody>
           </table>
         </div>
-      </div>
+      )}
 
       {/* Observation Inspection & Decision Drawer / Modal */}
       {selectedObservation && (

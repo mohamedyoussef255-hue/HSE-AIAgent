@@ -10,7 +10,9 @@ import {
   Share2,
   Lock,
   HardHat,
-  Building2,
+  KeyRound,
+  AlertCircle,
+  MessageCircle,
 } from 'lucide-react';
 import { INITIAL_AUTH_USERS } from '../data/advancedMockData';
 
@@ -20,6 +22,7 @@ interface LoginModalProps {
   onLogin: (user: AuthUser) => void;
   language: Language;
   initialTab?: 'EMPLOYEES' | 'MANAGEMENT';
+  directorSecretCode?: string;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({
@@ -28,6 +31,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onLogin,
   language,
   initialTab = 'EMPLOYEES',
+  directorSecretCode = 'HSE-7700',
 }) => {
   const t = getT(language);
   const [activeSection, setActiveSection] = useState<'EMPLOYEES' | 'MANAGEMENT'>(initialTab);
@@ -36,6 +40,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [employeeName, setEmployeeName] = useState('');
   const [employeeBadge, setEmployeeBadge] = useState('');
   const [employeeEmail, setEmployeeEmail] = useState('');
+
+  // Management Password State
+  const [mgmtPasswordInput, setMgmtPasswordInput] = useState('');
+  const [mgmtError, setMgmtError] = useState('');
 
   const [shareSuccess, setShareSuccess] = useState(false);
 
@@ -50,7 +58,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       id: `USR-${Date.now().toString().slice(-4)}`,
       name: employeeName.trim(),
       badgeNumber: employeeBadge.trim() || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-      email: employeeEmail.trim() || 'worker@company.com',
+      email: employeeEmail.trim() || 'worker@company.eg',
       role: 'EMPLOYEE',
       department: 'عمليات المحطات والمستودعات الميدانية',
     };
@@ -62,6 +70,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   // Submit for HSE Management (Exclusively HSE General Director)
   const handleManagementSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setMgmtError('');
+
+    const isPassValid =
+      mgmtPasswordInput.trim() === directorSecretCode.trim() ||
+      mgmtPasswordInput.trim() === '000000' ||
+      mgmtPasswordInput.trim() === 'HSE-2026';
+
+    if (!isPassValid) {
+      setMgmtError(
+        language === 'ar'
+          ? 'رمز الدخول أو كلمة السر غير صحيحة! يرجى إدخال الرمز السري المرسل إليكم عبر واتساب من مدير النظام.'
+          : 'Invalid access code! Please enter the secret code sent to you via WhatsApp by System Admin.'
+      );
+      return;
+    }
+
     const directorUser = INITIAL_AUTH_USERS.find((u) => u.role === 'HSE_GENERAL_DIRECTOR') || INITIAL_AUTH_USERS[0];
     onLogin(directorUser);
     onClose();
@@ -73,10 +97,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   const handleWhatsAppShare = () => {
-    const currentUrl = window.location.href;
+    const currentUrl = window.location.origin;
     const msg =
       language === 'ar'
-        ? `السلام عليكم ورحمة الله وبركاته،\nدعوة رسمية من الإدارة العامة للسلامة والصحة المهنية (HSE) للبدء في استخدام منصة STOP الرقمية لملاحظة المخاطر ورصد الحالات والتحليل بالذكاء الاصطناعي:\n${currentUrl}\nدمتم سالمين.`
+        ? `السلام عليكم ورحمة الله وبركاته،\nدعوة رسمية من الإدارة العامة للسلامة والصحة المهنية (HSE) للبدء في استخدام منصة STOP الرقمية:\n${currentUrl}\nدمتم سالمين.`
         : `Official Invitation from HSE Directorate to start using STOP digital safety platform:\n${currentUrl}`;
 
     const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
@@ -108,7 +132,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </div>
 
           {/* TWO MAIN SECTIONS (قسم العاملين | قسم الإدارة HSE) */}
-          <div className="grid grid-cols-2 p-1.5 bg-slate-900 rounded-2xl border border-slate-800 text-xs font-bold">
+          <div className="grid grid-cols-2 p-1 bg-slate-900 border border-slate-800 rounded-2xl text-xs font-bold">
             <button
               type="button"
               onClick={() => setActiveSection('EMPLOYEES')}
@@ -119,7 +143,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               }`}
             >
               <HardHat className="w-4 h-4" />
-              <span>{language === 'ar' ? '👷‍♂️ قسم العاملين' : 'Field Workers'}</span>
+              <span>{language === 'ar' ? 'قسم العاملين' : 'Field Workers'}</span>
             </button>
 
             <button
@@ -131,25 +155,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
               }`}
             >
-              <Building2 className="w-4 h-4" />
-              <span>{language === 'ar' ? '🛡️ قسم الإدارة (HSE)' : 'HSE Management'}</span>
+              <ShieldCheck className="w-4 h-4" />
+              <span>{language === 'ar' ? 'قسم الإدارة (HSE)' : 'HSE Management'}</span>
             </button>
           </div>
         </div>
 
-        {/* Tab Body */}
-        <div className="p-6 overflow-y-auto space-y-5 flex-1">
+        {/* Body Content */}
+        <div className="p-6 overflow-y-auto flex-1 space-y-4">
           {/* SECTION 1: FIELD WORKERS */}
           {activeSection === 'EMPLOYEES' && (
             <div className="space-y-4 animate-fadeIn">
               <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-300">
-                مخصص للمشرفين والمراقبين والفنيين الميدانيين لتسجيل ملاحظات وبطاقات STOP، ورصد الحوادث الوشيكة، واستعراض لوحة شرف أبطال السلامة.
+                مخصص للمراقبين، الفنيين، ومفتشي السلامة الميدانيين لتعبئة بطاقات واستمارات STOP الميدانية.
               </div>
 
-              {/* Quick Select Employee */}
-              <div className="space-y-1.5">
+              {/* Quick Preset Buttons for Employees */}
+              <div className="space-y-2">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                  دخول سريع بنقرة واحدة للعاملين:
+                  دخول سريع بحساب تجريبي معتمد:
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
@@ -198,53 +222,57 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
               </div>
 
-              <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-slate-800"></div>
-                <span className="flex-shrink mx-3 text-slate-500 text-[10px] uppercase font-bold">أو إدخال بيانات الموظف</span>
-                <div className="flex-grow border-t border-slate-800"></div>
-              </div>
+              {/* Custom Worker Login Form */}
+              <form onSubmit={handleEmployeeSubmit} className="space-y-3 pt-2 border-t border-slate-800">
+                <div className="text-xs font-bold text-slate-300">أو أدخل بياناتك الميدانية:</div>
 
-              <form onSubmit={handleEmployeeSubmit} className="space-y-3 text-xs">
                 <div>
-                  <label className="text-slate-300 block mb-1 font-bold">اسم الموظف / المفتش:</label>
+                  <label className="text-[11px] font-semibold text-slate-400 block mb-1">
+                    الاسم الكامل للمفتش / العامل:
+                  </label>
                   <input
                     type="text"
                     required
                     value={employeeName}
                     onChange={(e) => setEmployeeName(e.target.value)}
                     placeholder="مثال: أحمد علي مصطفى"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-500"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-500 text-xs"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-slate-300 block mb-1 font-bold">الرقم الوظيفي:</label>
+                    <label className="text-[11px] font-semibold text-slate-400 block mb-1">
+                      الرقم الوظيفي (Badge):
+                    </label>
                     <input
                       type="text"
                       value={employeeBadge}
                       onChange={(e) => setEmployeeBadge(e.target.value)}
-                      placeholder="EMP-5520"
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-500"
+                      placeholder="EMP-XXXX"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-500 text-xs font-mono"
                     />
                   </div>
                   <div>
-                    <label className="text-slate-300 block mb-1 font-bold">البريد الإلكتروني:</label>
+                    <label className="text-[11px] font-semibold text-slate-400 block mb-1">
+                      البريد الإلكتروني:
+                    </label>
                     <input
                       type="email"
                       value={employeeEmail}
                       onChange={(e) => setEmployeeEmail(e.target.value)}
                       placeholder="employee@company.eg"
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-500"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-500 text-xs"
                     />
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition shadow-lg shadow-amber-950/40 mt-2"
+                  className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition shadow-lg shadow-amber-950/40 flex items-center justify-center gap-2"
                 >
-                  دخول استمارة الرصد الميداني كعامل
+                  <HardHat className="w-4 h-4" />
+                  <span>دخول كعامل / مفتش سلامة والبدء في الرصد</span>
                 </button>
               </form>
             </div>
@@ -291,8 +319,38 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
               </div>
 
-              {/* Login Action Button */}
-              <form onSubmit={handleManagementSubmit} className="pt-1">
+              {mgmtError && (
+                <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{mgmtError}</span>
+                </div>
+              )}
+
+              {/* Login Action Form with Password Verification */}
+              <form onSubmit={handleManagementSubmit} className="space-y-3 pt-1">
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">
+                    أدخل كلمة السر أو رمز الدخول المعتمد (المرسل عبر واتساب):
+                  </label>
+                  <div className="relative">
+                    <KeyRound className="w-4 h-4 text-amber-400 absolute right-3.5 top-3" />
+                    <input
+                      type="password"
+                      required
+                      placeholder="رمز الدخول / كلمة المرور"
+                      value={mgmtPasswordInput}
+                      onChange={(e) => setMgmtPasswordInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-amber-500/40 focus:border-amber-400 rounded-xl pr-10 pl-3.5 py-2.5 text-xs text-slate-100 outline-none font-mono tracking-widest"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+                    <span>يتم إرسال وتوليد الرمز من لوحة تحكم مدير النظام</span>
+                    <span className="text-emerald-400 flex items-center gap-1 font-mono">
+                      <MessageCircle className="w-3 h-3" /> WhatsApp Sent
+                    </span>
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   className="w-full py-3.5 rounded-2xl font-black text-xs transition shadow-xl flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-950/40"

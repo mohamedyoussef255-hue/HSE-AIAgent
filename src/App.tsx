@@ -17,6 +17,9 @@ import { DropdownManagerModal } from './components/DropdownManagerModal';
 import { ObservationHistoryLogModal } from './components/ObservationHistoryLogModal';
 import { SystemAdminControlPanelView } from './components/SystemAdminControlPanelView';
 import { LiveIncidentStreamModal } from './components/LiveIncidentStreamModal';
+import { MobileAppDownloadModal } from './components/MobileAppDownloadModal';
+import { PointsRewardsControlModal } from './components/PointsRewardsControlModal';
+import { SiteWeatherRiskWidget } from './components/SiteWeatherRiskWidget';
 
 import {
   INITIAL_OBSERVATIONS,
@@ -43,11 +46,15 @@ import {
   HeatmapStation,
   Language,
   LiveIncidentStreamSession,
+  RewardItem,
   SafetyUser,
   StopObservation,
   ThemeMode,
+  AppUiCustomization,
 } from './types';
 import { getT } from './utils/translations';
+import { generatePaletteCSS } from './utils/themeStyles';
+import { DEFAULT_APP_UI_CUSTOMIZATION } from './data/defaultUiCustomization';
 
 const STORAGE_KEY_OBS = 'minhaj_stop_observations_v2';
 const STORAGE_KEY_QUEUE = 'minhaj_stop_offline_queue_v2';
@@ -61,9 +68,18 @@ const STORAGE_KEY_HEROES = 'minhaj_stop_heroes_v2';
 const STORAGE_KEY_DROPDOWNS = 'minhaj_stop_dropdowns_v2';
 const STORAGE_KEY_BOT_RULES = 'minhaj_stop_bot_rules_v2';
 const STORAGE_KEY_OFF_HOURS = 'minhaj_stop_off_hours_v2';
+const STORAGE_KEY_ADMIN_PASS = 'minhaj_stop_sys_admin_pass_v2';
+const STORAGE_KEY_UI_CUSTOM = 'minhaj_stop_ui_customization_v2';
+const STORAGE_KEY_CURRENT_TAB = 'minhaj_stop_current_tab_v2';
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState<NavTab>('field');
+  const [currentTab, setCurrentTab] = useState<NavTab>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_CURRENT_TAB);
+    if (saved && ['system_admin', 'management', 'field', 'heatmap', 'rootcause', 'gamification'].includes(saved)) {
+      return saved as NavTab;
+    }
+    return 'system_admin'; // Adopt the new system admin control panel as the default view
+  });
   const [isOffline, setIsOffline] = useState<boolean>(false);
 
   // Settings & Theme
@@ -104,13 +120,13 @@ export default function App() {
     return INITIAL_USERS[0];
   });
 
-  // Authenticated user (Auth)
+  // Authenticated user (Auth) - Defaults to System Admin to adopt new view
   const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_AUTH);
       if (saved) return JSON.parse(saved);
     } catch (_) {}
-    return INITIAL_AUTH_USERS[0]; // Default logged-in employee
+    return INITIAL_AUTH_USERS.find((u) => u.role === 'SYSTEM_ADMIN') || INITIAL_AUTH_USERS[1];
   });
 
   // Broadcasts, Heroes & Chat
@@ -174,6 +190,80 @@ export default function App() {
   const [isHistoryLogOpen, setIsHistoryLogOpen] = useState<boolean>(false);
   const [isLiveStreamOpen, setIsLiveStreamOpen] = useState<boolean>(false);
   const [activeLiveSession, setActiveLiveSession] = useState<LiveIncidentStreamSession | null>(null);
+  const [isMobileDownloadOpen, setIsMobileDownloadOpen] = useState<boolean>(false);
+  const [isWeatherModalOpen, setIsWeatherModalOpen] = useState<boolean>(false);
+  const [isRewardsControlOpen, setIsRewardsControlOpen] = useState<boolean>(false);
+  const [directorSecretCode, setDirectorSecretCode] = useState<string>('000000 HSE');
+  const [adminPassword, setAdminPassword] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEY_ADMIN_PASS) || '0000';
+  });
+  const [uiCustomization, setUiCustomization] = useState<AppUiCustomization>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_UI_CUSTOM);
+      if (saved) return JSON.parse(saved);
+    } catch (_) {}
+    return DEFAULT_APP_UI_CUSTOMIZATION;
+  });
+
+  const handleResetUiCustomization = () => {
+    setUiCustomization(DEFAULT_APP_UI_CUSTOMIZATION);
+    try {
+      localStorage.setItem(STORAGE_KEY_UI_CUSTOM, JSON.stringify(DEFAULT_APP_UI_CUSTOMIZATION));
+    } catch (_) {}
+  };
+  const [rewardsList, setRewardsList] = useState<RewardItem[]>([
+    {
+      id: 'REW-01',
+      title: 'يوم إجازة إضافي مدفوع الأجر',
+      description: 'إجازة تقديرية إضافية معتمدة من مدير عام السلامة والصحة المهنية لليقظة العالية.',
+      pointsRequired: 250,
+      icon: 'Calendar',
+      category: 'LEAVE',
+      available: true,
+    },
+    {
+      id: 'REW-02',
+      title: 'قسيمة مشتريات بقيمة 1,000 ج.م / ر.س',
+      description: 'قسيمة شراء فورية لأفضل مراكز التجزئة والمتاجر الكبرى.',
+      pointsRequired: 180,
+      icon: 'Gift',
+      category: 'VOUCHER',
+      available: true,
+    },
+    {
+      id: 'REW-03',
+      title: 'خوذة سلامة ذكية ومهمات وقاية متطورة (Pro Series)',
+      description: 'خوذة مهنية معتمدة ومزودة بمصباح ليلي وشريط عاكس ورباط ذقن.',
+      pointsRequired: 120,
+      icon: 'HardHat',
+      category: 'GEAR',
+      available: true,
+    },
+    {
+      id: 'REW-04',
+      title: 'درع تميز بطل السلامة مع شهادة تقدير موثقة',
+      description: 'درع فاخر مطلي وموثق من الإدارة العامة للسلامة والصحة المهنية.',
+      pointsRequired: 150,
+      icon: 'Award',
+      category: 'RECOGNITION',
+      available: true,
+    },
+  ]);
+
+  const handleUpdateUserPoints = (userId: string, addedPoints: number) => {
+    setCurrentUser((prev) => (prev.id === userId ? { ...prev, points: Math.max(0, prev.points + addedPoints) } : prev));
+  };
+
+  const handleSelectTab = (tab: NavTab) => {
+    if (tab === 'system_admin') {
+      const adminUser = INITIAL_AUTH_USERS.find((u) => u.role === 'SYSTEM_ADMIN') || INITIAL_AUTH_USERS[1];
+      setAuthUser(adminUser);
+    }
+    setCurrentTab(tab);
+    try {
+      localStorage.setItem(STORAGE_KEY_CURRENT_TAB, tab);
+    } catch (_) {}
+  };
 
   // Pre-fill state for observation from AI Radar
   const [radarPreFillData, setRadarPreFillData] = useState<Partial<StopObservation> | null>(null);
@@ -198,14 +288,28 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY_DROPDOWNS, JSON.stringify(dropdownOptions));
       localStorage.setItem(STORAGE_KEY_BOT_RULES, JSON.stringify(botRules));
       localStorage.setItem(STORAGE_KEY_OFF_HOURS, JSON.stringify(isOffHoursSimulated));
+      localStorage.setItem(STORAGE_KEY_ADMIN_PASS, adminPassword);
+      localStorage.setItem(STORAGE_KEY_UI_CUSTOM, JSON.stringify(uiCustomization));
+      localStorage.setItem(STORAGE_KEY_CURRENT_TAB, currentTab);
     } catch (_) {}
-  }, [themeMode, colorPalette, language, observations, offlineQueue, currentUser, authUser, broadcasts, heroRewards, dropdownOptions, botRules, isOffHoursSimulated]);
+  }, [themeMode, colorPalette, language, observations, offlineQueue, currentUser, authUser, broadcasts, heroRewards, dropdownOptions, botRules, isOffHoursSimulated, adminPassword, uiCustomization, currentTab]);
 
   // Adjust document direction
   useEffect(() => {
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = language;
   }, [language]);
+
+  // Apply real-time dynamic palette CSS & dark/light overrides across the entire application
+  useEffect(() => {
+    let styleTag = document.getElementById('stop-dynamic-theme-overrides') as HTMLStyleElement | null;
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = 'stop-dynamic-theme-overrides';
+      document.head.appendChild(styleTag);
+    }
+    styleTag.textContent = generatePaletteCSS(colorPalette, themeMode);
+  }, [colorPalette, themeMode]);
 
   // Handle saving new observation from Field
   const handleSaveObservation = (newObs: StopObservation) => {
@@ -462,7 +566,7 @@ export default function App() {
       {/* Top Header & Navigation */}
       <Header
         currentTab={currentTab}
-        onSelectTab={setCurrentTab}
+        onSelectTab={handleSelectTab}
         isOffline={isOffline}
         onToggleOffline={() => setIsOffline(!isOffline)}
         offlineQueueCount={offlineQueue.length}
@@ -483,9 +587,12 @@ export default function App() {
         isLiveStreamActive={Boolean(activeLiveSession?.isActive)}
         activeLiveSession={activeLiveSession}
         isOffHoursSimulated={isOffHoursSimulated}
+        onOpenMobileDownload={() => setIsMobileDownloadOpen(true)}
+        onOpenWeatherAdvisory={() => setIsWeatherModalOpen(true)}
         language={language}
         themeMode={themeMode}
         colorPalette={colorPalette}
+        uiConfig={uiCustomization.headerBar}
       />
 
       {/* Main Content Area */}
@@ -501,6 +608,10 @@ export default function App() {
             onOpenLiveStream={() => setIsLiveStreamOpen(true)}
             dropdownOptions={dropdownOptions}
             onOpenDropdownManager={authUser?.role === 'SYSTEM_ADMIN' ? () => setIsDropdownManagerOpen(true) : undefined}
+            onBack={() => handleSelectTab('management')}
+            language={language}
+            currentUserRole={authUser?.role || 'EMPLOYEE'}
+            uiConfig={uiCustomization.workerPage}
           />
         )}
 
@@ -511,6 +622,8 @@ export default function App() {
             onOpenBotConfig={() => setIsBotConfigOpen(true)}
             onOpenDropdownManager={authUser?.role === 'SYSTEM_ADMIN' ? () => setIsDropdownManagerOpen(true) : undefined}
             isOffHoursSimulated={isOffHoursSimulated}
+            uiConfig={uiCustomization.directorPage}
+            onSwitchToSystemAdmin={() => handleSelectTab('system_admin')}
           />
         )}
 
@@ -526,12 +639,27 @@ export default function App() {
           <GamificationView users={INITIAL_USERS} currentUser={currentUser} />
         )}
 
-        {currentTab === 'system_admin' && authUser?.role === 'SYSTEM_ADMIN' && (
+        {currentTab === 'system_admin' && (
           <SystemAdminControlPanelView
             dropdownOptions={dropdownOptions}
             onOpenDropdownManager={() => setIsDropdownManagerOpen(true)}
             onOpenRadar={() => setIsRadarOpen(true)}
             language={language}
+            directorSecretCode={directorSecretCode}
+            onUpdateDirectorPassword={(newPass) => setDirectorSecretCode(newPass)}
+            adminPassword={adminPassword}
+            onUpdateAdminPassword={(newPass) => setAdminPassword(newPass)}
+            onLoginAsGeneralDirector={() => {
+              const dir = INITIAL_AUTH_USERS.find((u) => u.role === 'HSE_GENERAL_DIRECTOR') || INITIAL_AUTH_USERS[0];
+              setAuthUser(dir);
+              handleSelectTab('management');
+            }}
+            onOpenPointsRewardsManager={() => setIsRewardsControlOpen(true)}
+            onOpenWeatherAdvisory={() => setIsWeatherModalOpen(true)}
+            onBack={() => handleSelectTab('management')}
+            uiCustomization={uiCustomization}
+            onUpdateUiCustomization={(updated) => setUiCustomization(updated)}
+            onResetUiCustomization={handleResetUiCustomization}
           />
         )}
       </main>
@@ -547,7 +675,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex flex-col gap-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
             <span className="font-semibold text-slate-200 text-center sm:text-right">
-              STOP - برنامج ملاحظة تدريب السلامة والصحة المهنية (Safety Training Observation Program)
+              STOP - منصة تتبع وملاحظة السلامة (Safety Tracking & Observation Platform)
             </span>
             <div className="flex items-center gap-3">
               <span className="font-mono text-amber-400 text-[11px] bg-amber-500/10 px-2.5 py-0.5 rounded-md border border-amber-500/20 font-bold">
@@ -580,9 +708,15 @@ export default function App() {
         onClose={() => setIsAdminLoginOpen(false)}
         onLoginSuccess={(adminUser: AuthUser) => {
           setAuthUser(adminUser);
-          setCurrentTab('management');
+          if (adminUser.role === 'SYSTEM_ADMIN') {
+            handleSelectTab('system_admin');
+          } else {
+            handleSelectTab('management');
+          }
         }}
         language={language}
+        directorSecretCode={directorSecretCode}
+        adminPassword={adminPassword}
       />
 
       {/* 2. Employee / User Login Modal */}
@@ -600,6 +734,7 @@ export default function App() {
           }
         }}
         language={language}
+        directorSecretCode={directorSecretCode}
       />
 
       {/* 3. Theme, Palette & Language Modal */}
@@ -730,6 +865,41 @@ export default function App() {
         authUser={authUser}
         language={language}
       />
+
+      {/* 11. Mobile App Download Modal (Android APK & iOS PWA / App Store) */}
+      <MobileAppDownloadModal
+        isOpen={isMobileDownloadOpen}
+        onClose={() => setIsMobileDownloadOpen(false)}
+        language={language}
+      />
+
+      {/* 12. Points & Rewards Management Control Modal */}
+      <PointsRewardsControlModal
+        isOpen={isRewardsControlOpen}
+        onClose={() => setIsRewardsControlOpen(false)}
+        language={language}
+        users={INITIAL_USERS}
+        rewards={rewardsList}
+        onUpdateUserPoints={handleUpdateUserPoints}
+        onSaveRewards={setRewardsList}
+      />
+
+      {/* 13. Weather & Natural Disaster Emergency Advisory Modal */}
+      {isWeatherModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border-2 border-amber-500/40 rounded-3xl max-w-3xl w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 shadow-2xl relative">
+            <button
+              type="button"
+              onClick={() => setIsWeatherModalOpen(false)}
+              className="absolute top-4 left-4 p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition z-10"
+              title="إغلاق"
+            >
+              ✕
+            </button>
+            <SiteWeatherRiskWidget language={language} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

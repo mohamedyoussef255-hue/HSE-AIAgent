@@ -26,11 +26,19 @@ import {
   Share2,
   Scan,
   Radio,
+  RotateCcw,
+  CloudSun,
+  HardHat,
+  UserCheck,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
-import { Asset, DropdownOptionsMap, ObservationType, SeverityLevel, StopObservation } from '../types';
+import { Asset, DropdownOptionsMap, ObservationType, SeverityLevel, StopObservation, AIIncidentClassification, UserRole, Language, AppUiCustomization } from '../types';
 import { VoiceRecorder } from './VoiceRecorder';
 import { QrScanModal } from './QrScanModal';
 import { ShortVideoRecorder } from './ShortVideoRecorder';
+import { AIIncidentClassifier } from './AIIncidentClassifier';
+import { SiteWeatherRiskWidget } from './SiteWeatherRiskWidget';
 
 interface FieldMobileViewProps {
   onSaveObservation: (observation: StopObservation) => void;
@@ -42,6 +50,10 @@ interface FieldMobileViewProps {
   onOpenLiveStream?: () => void;
   dropdownOptions?: DropdownOptionsMap;
   onOpenDropdownManager?: () => void;
+  onBack?: () => void;
+  language?: Language;
+  currentUserRole?: UserRole;
+  uiConfig?: AppUiCustomization['workerPage'];
 }
 
 export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
@@ -54,9 +66,24 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
   onOpenLiveStream,
   dropdownOptions,
   onOpenDropdownManager,
+  onBack,
+  language = 'ar',
+  currentUserRole = 'EMPLOYEE',
+  uiConfig,
 }) => {
-  const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(true);
+  const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
+  const [observerRole, setObserverRole] = useState<'EMPLOYEE' | 'HSE_OFFICER'>(
+    currentUserRole === 'HSE_ADMIN' || currentUserRole === 'HSE_GENERAL_DIRECTOR' || currentUserRole === 'HSE_OFFICER'
+      ? 'HSE_OFFICER'
+      : 'EMPLOYEE'
+  );
+  // Ultra-simplified view for workers vs advanced technical view for HSE officers
+  const [isSimplifiedWorkerMode, setIsSimplifiedWorkerMode] = useState<boolean>(
+    currentUserRole === 'EMPLOYEE' || observerRole === 'EMPLOYEE'
+  );
+  const [aiClassification, setAiClassification] = useState<AIIncidentClassification | null>(null);
+  const [showWeatherWidget, setShowWeatherWidget] = useState<boolean>(false);
 
   // Form states
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -274,83 +301,162 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
 
   return (
     <div className="w-full flex flex-col items-center justify-center p-2 sm:p-4 md:p-6 transition-all">
-      {/* Device View Mode Toggle */}
-      <div className="w-full max-w-2xl mb-4 flex items-center justify-between bg-slate-900/80 px-4 py-2.5 rounded-xl border border-slate-800">
-        <div className="flex items-center gap-2 text-xs text-slate-300">
-          <Smartphone className="w-4 h-4 text-amber-400" />
-          <span>وضع تطبيق الميدان الذكي (STOP Mobile Inspector)</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsPhoneFrame(!isPhoneFrame)}
-          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors border border-slate-700"
-        >
-          {isPhoneFrame ? (
-            <>
-              <Maximize2 className="w-3.5 h-3.5" />
-              <span>عرض الشاشة الكاملة</span>
-            </>
-          ) : (
-            <>
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>عرض إطار الموبايل</span>
-            </>
-          )}
-        </button>
-      </div>
+      {/* Main Container - Full Native Mobile & Responsive without artificial desktop phone chrome */}
+      <div className="w-full max-w-4xl bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
+        {/* App Topbar - Vertical Layout with Logo on the Right (بالطول على اليمين) */}
+        <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-slate-950 px-4 sm:px-6 py-3.5 shadow-md">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Right side in RTL (The STOP logo and vertical badge block) */}
+            <div className="flex items-center gap-3">
+              {/* Vertical Logo Badge Block on the Right (بالطول على اليمين) */}
+              <div className="flex flex-col items-center justify-center bg-slate-950 text-amber-400 px-3 py-2 rounded-2xl border-2 border-amber-400/60 shadow-lg shrink-0">
+                <Shield className="w-5 h-5 stroke-[2.5] mb-0.5" />
+                <span className="font-black text-xs font-mono tracking-widest leading-none">STOP</span>
+                <span className="text-[8px] font-bold text-amber-300 uppercase tracking-tighter mt-0.5">HSE</span>
+              </div>
 
-      {/* Main Container - Responsive or Mobile Framed */}
-      <div
-        className={`w-full transition-all duration-300 ${
-          isPhoneFrame
-            ? 'max-w-[440px] bg-slate-900 border-[8px] border-slate-800 rounded-[44px] shadow-2xl overflow-hidden'
-            : 'max-w-3xl bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl'
-        }`}
-      >
-        {/* Phone Frame Speaker & Status Notch */}
-        {isPhoneFrame && (
-          <div className="w-full bg-slate-950 pt-2 pb-1 px-6 flex items-center justify-between text-[11px] text-slate-400">
-            <span>09:41</span>
-            <div className="w-20 h-4 bg-slate-800 rounded-full flex items-center justify-center">
-              <span className="w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-700" />
+                <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="font-black tracking-wider text-xl uppercase font-mono text-slate-950">
+                    {uiConfig?.pageTitle || 'STOP'}
+                  </h2>
+                  <span className="text-[10px] bg-slate-950 text-amber-400 px-2 py-0.5 rounded-full font-bold">
+                    FIELD APP • تطبيق الميدان
+                  </span>
+                  {isOffline && (
+                    <span className="text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded-full font-bold flex items-center gap-1 animate-pulse">
+                      <WifiOff className="w-3 h-3" /> أوفلاين
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col text-[11px] text-slate-950 font-bold leading-tight mt-0.5">
+                  <span className="font-extrabold tracking-wide">
+                    {uiConfig?.pageSubtitle || 'Safety Tracking & Observation Platform • منصة تتبع وملاحظة السلامة الميدانية'}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              {isOffline ? (
-                <span className="flex items-center text-amber-400 gap-1 font-bold">
-                  <WifiOff className="w-3 h-3" /> أوفلاين
-                </span>
-              ) : (
-                <span className="text-emerald-400 font-bold">5G</span>
+
+            {/* Left Actions (Prominent Back, Weather, Simplified Mode Toggle, QR) */}
+            <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
+              {/* Quick UI Simplification Toggle */}
+              {(uiConfig ? uiConfig.showSimplifiedModeToggle : true) && (
+                <button
+                  type="button"
+                  onClick={() => setIsSimplifiedWorkerMode((prev) => !prev)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition shadow-md ${
+                    isSimplifiedWorkerMode
+                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-400'
+                      : 'bg-slate-950 text-amber-400 hover:bg-slate-900'
+                  }`}
+                  title="التبديل بين الواجهة المبسطة للعاملين والواجهة الفنية المتقدمة"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isSimplifiedWorkerMode ? '✓ وضع العاملين المبسط (نشط)' : 'تفعيل الواجهة المبسطة'}</span>
+                </button>
               )}
-              <span className="w-4 h-2.5 border border-slate-400 rounded-sm inline-block relative before:absolute before:inset-0.5 before:bg-slate-400" />
+
+              {(uiConfig ? uiConfig.showWeatherWidget : true) && (
+                <button
+                  type="button"
+                  onClick={() => setShowWeatherWidget((prev) => !prev)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950/90 hover:bg-slate-950 text-amber-300 rounded-xl text-xs font-bold shadow-md transition"
+                  title="عرض حالة الطقس وإرشادات الملابس ومهمات الوقاية"
+                >
+                  <CloudSun className="w-4 h-4 text-amber-400" />
+                  <span className="hidden sm:inline">نشرة الطقس</span>
+                </button>
+              )}
+
+              {(uiConfig ? uiConfig.showQrScanBtn : true) && (
+                <button
+                  type="button"
+                  onClick={() => setIsQrModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 hover:bg-slate-900 text-amber-400 rounded-xl text-xs font-bold shadow-lg transition-transform active:scale-95"
+                >
+                  <QrCode className="w-4 h-4" />
+                  <span className="hidden sm:inline">مسح QR</span>
+                </button>
+              )}
+
+              {onBack && (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-900 text-amber-400 font-black text-xs transition shadow-md active:scale-95"
+                  title="تراجع والعودة للشاشة السابقة"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>تراجع</span>
+                </button>
+              )}
             </div>
+          </div>
+        </div>
+
+        {/* Collapsible Weather & Natural Disaster Advisory Widget */}
+        {(uiConfig ? uiConfig.showWeatherWidget : true) && showWeatherWidget && (
+          <div className="p-4 bg-slate-950/90 border-b border-slate-800 animate-fadeIn">
+            <SiteWeatherRiskWidget language={language} selectedStation={stationName} onStationChange={setStationName} />
           </div>
         )}
 
-        {/* App Topbar */}
-        <div className="bg-gradient-to-r from-amber-600 to-amber-500 text-slate-950 px-5 py-4 flex items-center justify-between shadow-md">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-black tracking-wider text-xl uppercase font-mono">STOP</span>
-              <span className="text-[10px] bg-slate-950 text-amber-400 px-2 py-0.5 rounded-full font-bold">
-                FIELD
+        {/* Observer Identity Differentiation: General Worker vs HSE Safety Officer */}
+        {(uiConfig ? uiConfig.showObserverRoleToggle : true) && (
+        <div className="bg-slate-950/90 border-b border-slate-800 px-4 sm:px-6 py-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-slate-400 font-bold">هوية الراصد ومقدم البلاغ:</span>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-black border flex items-center gap-1.5 ${
+                observerRole === 'HSE_OFFICER'
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  : 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+              }`}>
+                {observerRole === 'HSE_OFFICER' ? (
+                  <>
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>ضابط ومفتش إدارة السلامة والصحة المهنية (Certified HSE Officer)</span>
+                  </>
+                ) : (
+                  <>
+                    <HardHat className="w-3.5 h-3.5 text-blue-400" />
+                    <span>عامل / موظف تشغيل وإنتاج ميداني (Field Worker / Operator)</span>
+                  </>
+                )}
               </span>
             </div>
-            <div className="flex flex-col text-[10px] text-slate-950 font-semibold leading-tight mt-0.5">
-              <span>Safety Training Observation Program</span>
-              <span className="text-[9px] opacity-85">برنامج ملاحظة تدريب السلامة</span>
+
+            {/* Quick Toggle for Observer Role */}
+            <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setObserverRole('EMPLOYEE')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold transition ${
+                  observerRole === 'EMPLOYEE'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <HardHat className="w-3.5 h-3.5" />
+                <span>عامل تشغيل عادي</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setObserverRole('HSE_OFFICER')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold transition ${
+                  observerRole === 'HSE_OFFICER'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>ضابط إدارة السلامة (HSE)</span>
+              </button>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setIsQrModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 hover:bg-slate-900 text-amber-400 rounded-xl text-xs font-bold shadow-lg transition-transform active:scale-95"
-          >
-            <QrCode className="w-4 h-4" />
-            <span>مسح الأصل</span>
-          </button>
         </div>
+        )}
 
         {/* Offline Banner if Active */}
         {isOffline && (
@@ -368,7 +474,7 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5">
           {/* Emergency Near-Miss Live Stream Launcher */}
-          {onOpenLiveStream && (
+          {onOpenLiveStream && (uiConfig ? uiConfig.showLiveStreamNearMissBanner : true) && (
             <div className="bg-gradient-to-r from-rose-950/80 via-red-950/60 to-slate-950 p-3.5 rounded-2xl border-2 border-rose-500/50 shadow-lg flex items-center justify-between gap-3">
               <div className="space-y-1">
                 <div className="flex items-center gap-1.5 font-black text-rose-300 text-xs">
@@ -392,6 +498,7 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
           )}
 
           {/* Asset & Location Info Card */}
+          {(uiConfig ? uiConfig.showAssetLocationSelector : true) && (
           <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800/80 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
@@ -467,30 +574,36 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
               </div>
             )}
           </div>
+          )}
 
           {/* Voice-to-Text Component */}
-          <VoiceRecorder
-            onTranscription={(text) => {
-              setDescription((prev) => (prev ? `${prev}\n${text}` : text));
-            }}
-          />
+          {(uiConfig ? uiConfig.showVoiceRecorder : true) && (
+            <VoiceRecorder
+              onTranscription={(text) => {
+                setDescription((prev) => (prev ? `${prev}\n${text}` : text));
+              }}
+            />
+          )}
 
           {/* Observation Text Description */}
+          {(uiConfig ? uiConfig.showDescriptionField : true) && (
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                 <span>وصف الملاحظة الميدانية</span>
                 <span className="text-rose-500">*</span>
               </label>
-              <button
-                type="button"
-                onClick={handleAiAutoClassify}
-                disabled={isAiClassifying || !description.trim()}
-                className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold transition-all shadow disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{isAiClassifying ? 'جارِ التحليل الذكي...' : 'تصنيف تلقائي بـ Gemini'}</span>
-              </button>
+              {(uiConfig ? uiConfig.showAiGeminiClassifyBtn : true) && (
+                <button
+                  type="button"
+                  onClick={handleAiAutoClassify}
+                  disabled={isAiClassifying || !description.trim()}
+                  className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold transition-all shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isAiClassifying ? 'جارِ التحليل الذكي...' : 'تصنيف تلقائي بـ Gemini'}</span>
+                </button>
+              )}
             </div>
 
             <textarea
@@ -501,6 +614,7 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
               className="w-full text-sm bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all"
             />
           </div>
+          )}
 
           {/* AI Insights Card if Classified */}
           {aiAnalysisResult && (
@@ -537,174 +651,251 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
             </div>
           )}
 
-          {/* STOP Methodology Classification Selectors */}
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                تصنيف منهجية STOP:
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(
-                  [
-                    'تصرف غير آمن (Unsafe Act)',
-                    'حالة غير آمنة (Unsafe Condition)',
-                    'ممارسة آمنة (Safe Practice)',
-                  ] as ObservationType[]
-                ).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setType(t)}
-                    className={`py-2 px-2 text-xs rounded-xl border text-center transition-all ${
-                      type === t
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {t.split('(')[0]}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* AI Incident Classification: Distinguish Near-Miss vs Potential vs Emergency */}
+          <AIIncidentClassifier
+            description={description}
+            language={language}
+            onApplyClassification={(classifiedType, suggestedSeverity, rationale) => {
+              setAiClassification(classifiedType);
+              if (classifiedType === 'EMERGENCY_INCIDENT') {
+                setType('حالة غير آمنة (Unsafe Condition)');
+                setSeverity('high');
+                setRoutingRule('CRITICAL_ESCALATION');
+                setAssignedTo('مدير عام السلامة وفريق الطوارئ الفوري');
+                if (!immediateAction) {
+                  setImmediateAction('إيقاف العمل الشامل فوراً، إطلاق صفارات الإنذار وعزل مصدر الخطر');
+                }
+              } else if (classifiedType === 'NEAR_MISS') {
+                setType('تصرف غير آمن (Unsafe Act)');
+                setSeverity('high');
+                setRoutingRule('SUPERVISOR_ROUTING');
+                if (!immediateAction) {
+                  setImmediateAction('تأمين الموقع والتحقيق الفوري لمنع تكرار الحادثة الوشيكة');
+                }
+              } else {
+                setType('حالة غير آمنة (Unsafe Condition)');
+                setSeverity('medium');
+                setRoutingRule('SUPERVISOR_ROUTING');
+                if (!immediateAction) {
+                  setImmediateAction('وضع شريط تحذيري وجدولة الإصلاح الوقائي');
+                }
+              }
+            }}
+          />
 
-            <div className="grid grid-cols-2 gap-3">
+          {/* STOP Methodology Classification Selectors - In Simplified Mode, minimal intuitive cards are shown */}
+          <div className="space-y-3">
+            {(uiConfig ? uiConfig.showStopClassificationCards : true) && (
               <div>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-semibold text-slate-300">
-                    المجال الفني:
+                    {isSimplifiedWorkerMode ? 'ماذا رأيت في الموقع؟ (اختر بسهولة):' : 'تصنيف منهجية STOP:'}
                   </label>
-                  {onOpenDropdownManager && (
-                    <button
-                      type="button"
-                      onClick={onOpenDropdownManager}
-                      className="text-[10px] text-amber-400 hover:underline"
-                    >
-                      تعديل
-                    </button>
+                  {isSimplifiedWorkerMode && (
+                    <span className="text-[10px] text-emerald-400 font-bold">نمط الاختيار السريع للعمال</span>
                   )}
                 </div>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full text-xs bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-amber-500 outline-none"
-                >
-                  {(dropdownOptions?.technicalCategories || [
-                    'ميكانيكي / هيدروليكي',
-                    'كهربائي',
-                    'كيميائي / بيئي',
-                    'مهمات الوقاية (PPE)',
-                    'سلامة ومكافحة حريق',
-                    'نظافة وترتيب الموقع',
-                    'سلوك ومناولة مواد',
-                  ]).map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      'تصرف غير آمن (Unsafe Act)',
+                      'حالة غير آمنة (Unsafe Condition)',
+                      'ممارسة آمنة (Safe Practice)',
+                    ] as ObservationType[]
+                  ).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setType(t)}
+                      className={`py-2 px-2 text-xs rounded-xl border text-center transition-all ${
+                        type === t
+                          ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold shadow-md'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {isSimplifiedWorkerMode ? (
+                        t.includes('تصرف') ? '⚠️ تصرف عامل خطر' : t.includes('حالة') ? '🛠️ عطل / حالة بالمعدة' : '✅ عمل وسلوك آمن'
+                      ) : (
+                        t.split('(')[0]
+                      )}
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
+            )}
 
+            {/* In Simplified Mode, severity is simplified into 3 large clear buttons */}
+            {(uiConfig ? uiConfig.showSeverityLevelSelector : true) && (
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  مستوى الخطورة:
+                  {isSimplifiedWorkerMode ? 'درجة الخطورة المتوقعة:' : 'مستوى الخطورة:'}
                 </label>
-                <div className="flex gap-1">
+                <div className="flex gap-2">
                   {(['low', 'medium', 'high'] as SeverityLevel[]).map((s) => (
                     <button
                       key={s}
                       type="button"
                       onClick={() => setSeverity(s)}
-                      className={`flex-1 py-2 text-xs rounded-lg border font-bold capitalize transition-all ${
+                      className={`flex-1 py-2.5 text-xs rounded-xl border font-bold capitalize transition-all ${
                         severity === s
                           ? s === 'high'
-                            ? 'bg-rose-950 border-rose-600 text-rose-300'
+                            ? 'bg-rose-950 border-rose-600 text-rose-300 shadow-md'
                             : s === 'medium'
-                            ? 'bg-amber-950 border-amber-600 text-amber-300'
-                            : 'bg-emerald-950 border-emerald-600 text-emerald-300'
+                            ? 'bg-amber-950 border-amber-600 text-amber-300 shadow-md'
+                            : 'bg-emerald-950 border-emerald-600 text-emerald-300 shadow-md'
                           : 'bg-slate-950 border-slate-800 text-slate-400'
                       }`}
                     >
-                      {s === 'high' ? 'حرج' : s === 'medium' ? 'متوسط' : 'منخفض'}
+                      {s === 'high' ? '🚨 خطير جداً (حرج)' : s === 'medium' ? '⚠️ متوسط' : '🟢 بسيط / عادي'}
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Root Cause & Assigned Team Dropdowns */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-slate-300">
-                    السبب الجذري المرجح (Root Cause):
-                  </label>
-                  {onOpenDropdownManager && (
-                    <button
-                      type="button"
-                      onClick={onOpenDropdownManager}
-                      className="text-[10px] text-amber-400 hover:underline"
-                    >
-                      تعديل
-                    </button>
+            {/* Advanced technical fields: shown collapsed in Simplified Worker Mode, expanded for HSE Officer or by toggle */}
+            {!isSimplifiedWorkerMode ? (
+              <div className="space-y-3 pt-1 border-t border-slate-800">
+                <div className="grid grid-cols-2 gap-3">
+                  {(uiConfig ? uiConfig.showTechnicalCategorySelector : true) && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-slate-300">
+                          المجال الفني:
+                        </label>
+                        {onOpenDropdownManager && (
+                          <button
+                            type="button"
+                            onClick={onOpenDropdownManager}
+                            className="text-[10px] text-amber-400 hover:underline"
+                          >
+                            تعديل
+                          </button>
+                        )}
+                      </div>
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="w-full text-xs bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-amber-500 outline-none"
+                      >
+                        {(dropdownOptions?.technicalCategories || [
+                          'ميكانيكي / هيدروليكي',
+                          'كهربائي',
+                          'كيميائي / بيئي',
+                          'مهمات الوقاية (PPE)',
+                          'سلامة ومكافحة حريق',
+                          'نظافة وترتيب الموقع',
+                          'سلوك ومناولة مواد',
+                        ]).map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      المسار التوجيهي المعتمد:
+                    </label>
+                    <div className="p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-slate-300">
+                      {routingRule === 'CRITICAL_ESCALATION' ? '🚨 تصعيد فوري للإدارة' : '📋 توجيه للمشرف'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Root Cause & Assigned Team Dropdowns */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {(uiConfig ? uiConfig.showRootCauseSelector : true) && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-slate-300">
+                          السبب الجذري المرجح (Root Cause):
+                        </label>
+                        {onOpenDropdownManager && (
+                          <button
+                            type="button"
+                            onClick={onOpenDropdownManager}
+                            className="text-[10px] text-amber-400 hover:underline"
+                          >
+                            تعديل
+                          </button>
+                        )}
+                      </div>
+                      <select
+                        value={rootCause}
+                        onChange={(e) => setRootCause(e.target.value)}
+                        className="w-full text-xs bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-amber-500 outline-none"
+                      >
+                        <option value="">-- اختر السبب الجذري أو اتركه لتحليل الذكاء الاصطناعي --</option>
+                        {(dropdownOptions?.rootCauses || [
+                          'نقص التدريب أو قلة الخبرة الميدانية',
+                          'تجاوز إجراءات وقواعد السلامة المعتمدة',
+                          'تقادم المعدة أو عيب في الصيانة الدورية',
+                          'عدم توفر أو عدم ملاءمة مهمات الوقاية (PPE)',
+                          'ضغط العمل والاستعجال في التنفيذ',
+                        ]).map((rc) => (
+                          <option key={rc} value={rc}>
+                            {rc}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {(uiConfig ? uiConfig.showAssignedTeamSelector : true) && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-slate-300">
+                          توجيه البلاغ ومتابعته (Assigned Team):
+                        </label>
+                        {onOpenDropdownManager && (
+                          <button
+                            type="button"
+                            onClick={onOpenDropdownManager}
+                            className="text-[10px] text-amber-400 hover:underline"
+                          >
+                            تعديل
+                          </button>
+                        )}
+                      </div>
+                      <select
+                        value={assignedTo}
+                        onChange={(e) => setAssignedTo(e.target.value)}
+                        className="w-full text-xs bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-amber-500 outline-none"
+                      >
+                        {(dropdownOptions?.assignedTeams || [
+                          'مشرف الوردية الميداني',
+                          'مدير السلامة وإدارة الصيانة المركزية (تصعيد فوري)',
+                          'فريق الصيانة الكهربائية الميدانية',
+                          'فريق الصيانة الميكانيكية والضواغط',
+                          'قسم تدريب وتأهيل السلامة (HSE)',
+                        ]).map((team) => (
+                          <option key={team} value={team}>
+                            {team}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   )}
                 </div>
-                <select
-                  value={rootCause}
-                  onChange={(e) => setRootCause(e.target.value)}
-                  className="w-full text-xs bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-amber-500 outline-none"
-                >
-                  <option value="">-- اختر السبب الجذري أو اتركه لتحليل الذكاء الاصطناعي --</option>
-                  {(dropdownOptions?.rootCauses || [
-                    'نقص التدريب أو قلة الخبرة الميدانية',
-                    'تجاوز إجراءات وقواعد السلامة المعتمدة',
-                    'تقادم المعدة أو عيب في الصيانة الدورية',
-                    'عدم توفر أو عدم ملاءمة مهمات الوقاية (PPE)',
-                    'ضغط العمل والاستعجال في التنفيذ',
-                  ]).map((rc) => (
-                    <option key={rc} value={rc}>
-                      {rc}
-                    </option>
-                  ))}
-                </select>
               </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-slate-300">
-                    توجيه البلاغ ومتابعته (Assigned Team):
-                  </label>
-                  {onOpenDropdownManager && (
-                    <button
-                      type="button"
-                      onClick={onOpenDropdownManager}
-                      className="text-[10px] text-amber-400 hover:underline"
-                    >
-                      تعديل
-                    </button>
-                  )}
-                </div>
-                <select
-                  value={assignedTo}
-                  onChange={(e) => setAssignedTo(e.target.value)}
-                  className="w-full text-xs bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-amber-500 outline-none"
+            ) : (
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsSimplifiedWorkerMode(false)}
+                  className="text-[11px] text-slate-400 hover:text-amber-400 underline flex items-center gap-1"
                 >
-                  {(dropdownOptions?.assignedTeams || [
-                    'مشرف الوردية الميداني',
-                    'مدير السلامة وإدارة الصيانة المركزية (تصعيد فوري)',
-                    'فريق الصيانة الكهربائية الميدانية',
-                    'فريق الصيانة الميكانيكية والضواغط',
-                    'قسم تدريب وتأهيل السلامة (HSE)',
-                  ]).map((team) => (
-                    <option key={team} value={team}>
-                      {team}
-                    </option>
-                  ))}
-                </select>
+                  <span>خيارات فنية إضافية (أسباب جذرية، فرق صيانة متخصصة) ▾</span>
+                </button>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Immediate Action Field */}
+          {(uiConfig ? uiConfig.showImmediateActionField : true) && (
           <div>
             <label className="text-xs font-bold text-slate-200 block mb-1">
               الإجراء التصحيحي الفوري المتخذ (Immediate Action):
@@ -717,8 +908,10 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
               className="w-full text-xs bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-amber-500 outline-none"
             />
           </div>
+          )}
 
           {/* Photo Attachment & AI Radar Scanner */}
+          {(uiConfig ? uiConfig.showPhotoUpload : true) && (
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
@@ -784,21 +977,25 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
               </div>
             )}
           </div>
+          )}
 
           {/* Short Video Clip Recording for Observed Hazard */}
-          <ShortVideoRecorder
-            existingVideoUrl={videoUrl}
-            onVideoCaptured={(url, duration) => {
-              setVideoUrl(url);
-              setVideoDurationSeconds(duration);
-            }}
-            onClearVideo={() => {
-              setVideoUrl('');
-              setVideoDurationSeconds(0);
-            }}
-          />
+          {(uiConfig ? uiConfig.showVideoRecorder : true) && (
+            <ShortVideoRecorder
+              existingVideoUrl={videoUrl}
+              onVideoCaptured={(url, duration) => {
+                setVideoUrl(url);
+                setVideoDurationSeconds(duration);
+              }}
+              onClearVideo={() => {
+                setVideoUrl('');
+                setVideoDurationSeconds(0);
+              }}
+            />
+          )}
 
           {/* Gamification Points Indicator */}
+          {(uiConfig ? uiConfig.showPointsRewardCard : true) && (
           <div className="flex items-center justify-between p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs">
             <div className="flex items-center gap-2 text-amber-300">
               <Award className="w-4 h-4 text-amber-400" />
@@ -808,6 +1005,7 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
               +{severity === 'high' ? 50 : type.includes('تصرف') ? 35 : 25} نقطة سلامة 🛡️
             </span>
           </div>
+          )}
 
           {/* Submit Button */}
           <button

@@ -80,7 +80,66 @@ export interface SafetyUser {
   email?: string;
 }
 
-export type UserRole = 'EMPLOYEE' | 'SUPERVISOR' | 'HSE_ADMIN' | 'HSE_GENERAL_DIRECTOR' | 'SYSTEM_ADMIN' | 'BOT';
+export type UserRole = 'EMPLOYEE' | 'HSE_OFFICER' | 'SUPERVISOR' | 'HSE_ADMIN' | 'HSE_GENERAL_DIRECTOR' | 'SYSTEM_ADMIN' | 'BOT';
+
+export type AIIncidentClassification = 'NEAR_MISS' | 'POTENTIAL_HAZARD' | 'EMERGENCY_INCIDENT';
+
+export type WeatherReadinessLevel = 'NORMAL' | 'ELEVATED' | 'HIGH_ALERT' | 'DISASTER_EMERGENCY';
+
+export interface SiteWeatherStatus {
+  stationName: string;
+  city: string;
+  tempC: number;
+  feelsLikeC: number;
+  condition: 'مشمس معتدل' | 'حرارة شديدة' | 'عاصفة رملية وترابية' | 'أمطار غزيرة وسيول' | 'رياح شديدة وعواصف' | 'ضباب كثيف وانعدام رؤية';
+  conditionEn: string;
+  windSpeedKmH: number;
+  humidityPercent: number;
+  airQualityIndex: number;
+  readinessLevel: WeatherReadinessLevel;
+  naturalDisasterWarning?: string;
+  mandatoryPpeAdvisory: {
+    clothing: string[];
+    restrictedActivities: string[];
+    hydrationRestIntervalMinutes?: number;
+    jobSpecificInstructions: {
+      jobTitle: string;
+      instructions: string;
+      requiredGear: string;
+    }[];
+  };
+}
+
+export interface RewardItem {
+  id: string;
+  title: string;
+  points?: number;
+  pointsRequired?: number;
+  icon: string;
+  desc?: string;
+  description?: string;
+  active?: boolean;
+  available?: boolean;
+  category?: string;
+}
+
+export interface EmergencyBotScenario {
+  id: string;
+  title: string;
+  titleEn: string;
+  keywords: string[];
+  severity: EmergencySeverity;
+  category: string;
+  immediateInstructions: string[];
+  immediateInstructionsEn: string[];
+  evacuationRequired: boolean;
+  musterPoint?: string;
+  escalationContacts: { name: string; role: string; phone: string }[];
+  enabled: boolean;
+  activeOffHoursOnly: boolean;
+  customResponseText: string;
+  customResponseTextEn: string;
+}
 
 export interface LiveIncidentStreamSession {
   id: string;
@@ -141,7 +200,18 @@ export interface AuthUser {
 
 export type ThemeMode = 'dark' | 'light';
 
-export type ColorPalette = 'amber' | 'emerald' | 'blue' | 'orange' | 'cyan' | 'rose';
+export type ColorPalette =
+  | 'amber'
+  | 'emerald'
+  | 'blue'
+  | 'purple'
+  | 'teal'
+  | 'orange'
+  | 'cyan'
+  | 'rose'
+  | 'indigo'
+  | 'bronze'
+  | 'slate';
 
 export type Language = 'ar' | 'en';
 
@@ -225,4 +295,67 @@ export interface RadarScanResult {
   decisionSummary: string;
   decisionSummaryEn: string;
   photoUrl?: string;
+}
+
+export interface AppUiCustomization {
+  // Director Page Controls
+  directorPage: {
+    pageTitle: string;
+    pageSubtitle: string;
+    showExecutiveSummary: boolean;
+    showKpiCards: boolean;
+    showEmergencyBotBtn: boolean;
+    showDropdownManagerBtn: boolean;
+    showExportExcelBtn: boolean;
+    showPrintReportBtn: boolean;
+    showObservationsTable: boolean;
+    showTimeToClosureWidget: boolean;
+    showChangePasswordBtn: boolean;
+    showStatusFilter: boolean;
+    showSeverityFilter: boolean;
+    showTypeFilter: boolean;
+    showSearchBar: boolean;
+  };
+  // Field Worker Page Controls
+  workerPage: {
+    pageTitle: string;
+    pageSubtitle: string;
+    showWeatherWidget: boolean;
+    showQrScanBtn: boolean;
+    showObserverRoleToggle: boolean;
+    showLiveStreamNearMissBanner: boolean;
+    showAssetLocationSelector: boolean;
+    showVoiceRecorder: boolean;
+    showDescriptionField: boolean;
+    showAiGeminiClassifyBtn: boolean;
+    showStopClassificationCards: boolean;
+    showSeverityLevelSelector: boolean;
+    showTechnicalCategorySelector: boolean;
+    showRootCauseSelector: boolean;
+    showAssignedTeamSelector: boolean;
+    showImmediateActionField: boolean;
+    showPhotoUpload: boolean;
+    showVideoRecorder: boolean;
+    showPointsRewardCard: boolean;
+    showSimplifiedModeToggle: boolean;
+  };
+  // Top Header Global Bar Controls
+  headerBar: {
+    showLiveStreamBtn: boolean;
+    showDropdownManagerBtn: boolean;
+    showRadarScanBtn: boolean;
+    showMobileAppDownloadBtn: boolean;
+    showWeatherAdvisoryBtn: boolean;
+    showThemePaletteBtn: boolean;
+    showLanguageToggleBtn: boolean;
+    showOfflineSyncBtn: boolean;
+    showEmergencyBotBtn: boolean;
+    showCameraLibraryBtn: boolean;
+    showSafetyChatBtn: boolean;
+    showHeatmapTab: boolean;
+    showRootCauseTab: boolean;
+    showHeroesTab: boolean;
+    showManagementTab: boolean;
+    showFieldTab: boolean;
+  };
 }

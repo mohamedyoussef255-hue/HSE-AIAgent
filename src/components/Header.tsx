@@ -26,6 +26,8 @@ import {
   Video,
   Cpu,
   Layers,
+  CloudSun,
+  Download,
 } from 'lucide-react';
 import { AuthUser, ColorPalette, Language, LiveIncidentStreamSession, SafetyUser, ThemeMode } from '../types';
 import { getT } from '../utils/translations';
@@ -55,9 +57,12 @@ interface HeaderProps {
   isLiveStreamActive?: boolean;
   activeLiveSession?: LiveIncidentStreamSession | null;
   isOffHoursSimulated?: boolean;
+  onOpenMobileDownload?: () => void;
+  onOpenWeatherAdvisory?: () => void;
   language: Language;
   themeMode: ThemeMode;
   colorPalette: ColorPalette;
+  uiConfig?: import('../types').AppUiCustomization['headerBar'];
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -83,7 +88,10 @@ export const Header: React.FC<HeaderProps> = ({
   isLiveStreamActive,
   activeLiveSession,
   isOffHoursSimulated,
+  onOpenMobileDownload,
+  onOpenWeatherAdvisory,
   language,
+  uiConfig,
 }) => {
   const t = getT(language);
   const [stopClickCount, setStopClickCount] = useState<number>(0);
@@ -97,7 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
 
     if (nextCount >= 5) {
       setStopClickCount(0);
-      onOpenUserLogin(); // Opens the two-section login modal
+      onOpenAdminLogin(); // Opens the secret General Director gate asking for mohamedyoussef255@gmail.com and 000000 HSE
     } else {
       const timer = setTimeout(() => {
         setStopClickCount(0);
@@ -112,18 +120,18 @@ export const Header: React.FC<HeaderProps> = ({
 
   // System Admin Navigation Tabs
   const sysAdminTabs: { id: NavTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'field', label: t.fieldApp, icon: <Smartphone className="w-4 h-4" /> },
-    { id: 'management', label: t.managementDashboard, icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'heatmap', label: t.heatmaps, icon: <MapPin className="w-4 h-4" /> },
-    { id: 'rootcause', label: t.rootCause, icon: <BarChart3 className="w-4 h-4" /> },
-    { id: 'gamification', label: t.safetyHeroes, icon: <Trophy className="w-4 h-4" /> },
-    { id: 'system_admin', label: 'لوحة تحكم مدير النظام', icon: <Cpu className="w-4 h-4 text-purple-400" /> },
+    ...(uiConfig?.showFieldTab !== false ? [{ id: 'field' as NavTab, label: t.fieldApp, icon: <Smartphone className="w-4 h-4" /> }] : []),
+    ...(uiConfig?.showManagementTab !== false ? [{ id: 'management' as NavTab, label: t.managementDashboard, icon: <LayoutDashboard className="w-4 h-4" /> }] : []),
+    ...(uiConfig?.showHeatmapTab !== false ? [{ id: 'heatmap' as NavTab, label: t.heatmaps, icon: <MapPin className="w-4 h-4" /> }] : []),
+    ...(uiConfig?.showRootCauseTab !== false ? [{ id: 'rootcause' as NavTab, label: t.rootCause, icon: <BarChart3 className="w-4 h-4" /> }] : []),
+    ...(uiConfig?.showHeroesTab !== false ? [{ id: 'gamification' as NavTab, label: t.safetyHeroes, icon: <Trophy className="w-4 h-4" /> }] : []),
+    { id: 'system_admin' as NavTab, label: 'لوحة تحكم مدير النظام', icon: <Cpu className="w-4 h-4 text-purple-400" /> },
   ];
 
   // Standard Field Worker Tabs
   const employeeTabs: { id: NavTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'field', label: t.fieldApp, icon: <Smartphone className="w-4 h-4" /> },
-    { id: 'gamification', label: t.safetyHeroes, icon: <Trophy className="w-4 h-4" /> },
+    ...(uiConfig?.showFieldTab !== false ? [{ id: 'field' as NavTab, label: t.fieldApp, icon: <Smartphone className="w-4 h-4" /> }] : []),
+    ...(uiConfig?.showHeroesTab !== false ? [{ id: 'gamification' as NavTab, label: t.safetyHeroes, icon: <Trophy className="w-4 h-4" /> }] : []),
   ];
 
   return (
@@ -151,15 +159,28 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Main Top Header Line */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Brand & Secret Quick Access */}
+        {/* Brand & Secret Quick Access - Vertical layout with Logo block on the right */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500 flex items-center justify-center text-slate-950 shadow-md shadow-amber-950/40">
-              <Shield className="w-6 h-6 stroke-[2.5]" />
-            </div>
+            {/* Vertical Logo Badge Block on the Right (بالطول على اليمين) */}
+            <button
+              type="button"
+              onClick={handleStopBrandClick}
+              className="flex flex-col items-center justify-center bg-gradient-to-b from-amber-500 to-amber-600 text-slate-950 px-3 py-2 rounded-2xl shadow-lg shadow-amber-950/40 border border-amber-400 group active:scale-95 transition-transform cursor-pointer relative shrink-0"
+              title="نقر 5 مرات يفتح لوحة تحكم مدير النظام"
+            >
+              <Shield className="w-5 h-5 stroke-[2.5] mb-0.5 group-hover:rotate-12 transition-transform" />
+              <span className="font-mono font-black text-xs tracking-widest leading-none">STOP</span>
+              <span className="text-[8px] font-bold uppercase tracking-tight text-slate-950/80 mt-0.5">HSE</span>
+              {stopClickCount > 0 && stopClickCount < 5 && (
+                <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-rose-600 text-white text-[9px] font-black rounded-full animate-bounce shadow">
+                  {stopClickCount}/5
+                </span>
+              )}
+            </button>
 
             <div className="select-none">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={handleStopBrandClick}
@@ -169,11 +190,6 @@ export const Header: React.FC<HeaderProps> = ({
                   <h1 className="text-xl sm:text-2xl font-black tracking-wider uppercase text-slate-100 font-mono group-hover:text-amber-400 transition-colors">
                     STOP
                   </h1>
-                  {stopClickCount > 0 && stopClickCount < 5 && (
-                    <span className="absolute -top-1 -right-6 px-1.5 py-0.2 bg-amber-500 text-slate-950 text-[9px] font-black rounded-full animate-bounce">
-                      {stopClickCount}/5
-                    </span>
-                  )}
                 </button>
 
                 <span className="text-[10px] font-mono uppercase bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-md border border-amber-500/30 font-bold">
@@ -197,7 +213,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <div className="flex flex-col text-[11px] leading-snug">
                 <span className="font-semibold text-slate-200 tracking-wide">
-                  {isHseDirector ? 'الإدارة العامة للسلامة والصحة المهنية' : t.appSubtitle}
+                  {isHseDirector ? 'الإدارة العامة للسلامة والصحة المهنية' : 'Safety Tracking & Observation Platform'}
                 </span>
                 <span className="text-[10px] text-slate-400 font-medium">
                   {t.appSubtitleAr}
@@ -230,8 +246,26 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Global Action Header Items (Context Aware) */}
         <div className="flex flex-wrap items-center gap-2 self-stretch md:self-auto justify-end">
+          {/* Quick Access & Switch to System Admin Panel (New Mode) */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('system_admin')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm ${
+              currentTab === 'system_admin'
+                ? 'bg-purple-600 text-white border border-purple-400 font-black shadow-purple-950/50'
+                : 'bg-purple-950/70 hover:bg-purple-900/80 text-purple-200 border border-purple-600/50'
+            }`}
+            title="الوصول المباشر للوحة تحكم مدير النظام الجديدة واعتمادها"
+          >
+            <Cpu className="w-3.5 h-3.5 text-purple-300 animate-pulse" />
+            <span className="font-extrabold">لوحة مدير النظام الجديدة</span>
+            {currentTab === 'system_admin' && (
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+            )}
+          </button>
+
           {/* Emergency Near-Miss Live Stream Button (Accessible across system) */}
-          {onOpenLiveStream && (
+          {onOpenLiveStream && (uiConfig ? uiConfig.showLiveStreamBtn : true) && (
             <button
               type="button"
               onClick={onOpenLiveStream}
@@ -244,7 +278,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Dropdown Options Manager Button - STRICTLY SYSTEM ADMIN ONLY */}
-          {isSysAdmin && onOpenDropdownManager && (
+          {isSysAdmin && onOpenDropdownManager && (uiConfig ? uiConfig.showDropdownManagerBtn : true) && (
             <button
               type="button"
               onClick={onOpenDropdownManager}
@@ -257,7 +291,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* AI Camera Radar Button - STRICTLY SYSTEM ADMIN ONLY */}
-          {isSysAdmin && onOpenRadar && (
+          {isSysAdmin && onOpenRadar && (uiConfig ? uiConfig.showRadarScanBtn : true) && (
             <button
               type="button"
               onClick={onOpenRadar}
@@ -269,15 +303,43 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
+          {/* Mobile App Download Button (Android & iOS) */}
+          {onOpenMobileDownload && (uiConfig ? uiConfig.showMobileAppDownloadBtn : true) && (
+            <button
+              type="button"
+              onClick={onOpenMobileDownload}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition shadow-sm"
+              title="تحميل وتثبيت تطبيق الموبايل لنظامي أندرويد و iOS"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">تحميل التطبيق</span>
+            </button>
+          )}
+
+          {/* Weather & Disaster Monitoring Advisory Button */}
+          {onOpenWeatherAdvisory && (uiConfig ? uiConfig.showWeatherAdvisoryBtn : true) && (
+            <button
+              type="button"
+              onClick={onOpenWeatherAdvisory}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-950/50 hover:bg-amber-900/50 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition shadow-sm"
+              title="حالة الطقس، رصد الكوارث الطبيعية ونشرة الملابس ومهمات الوقاية"
+            >
+              <CloudSun className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden md:inline">الطقس ومهمات الوقاية</span>
+            </button>
+          )}
+
           {/* Palette & Theme Customizer Button */}
-          <button
-            type="button"
-            onClick={onOpenThemePalette}
-            className="p-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl transition"
-            title="بنتونة ألوان التطبيق والوضع النهاري/الليلي واللغة"
-          >
-            <Palette className="w-4 h-4 text-amber-400" />
-          </button>
+          {(uiConfig ? uiConfig.showThemePaletteBtn : true) && (
+            <button
+              type="button"
+              onClick={onOpenThemePalette}
+              className="p-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl transition"
+              title="بنتونة ألوان التطبيق والوضع النهاري/الليلي واللغة"
+            >
+              <Palette className="w-4 h-4 text-amber-400" />
+            </button>
+          )}
 
           {/* User Account / Login Pill */}
           <button
@@ -311,7 +373,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
             <div className="flex items-center gap-1.5 whitespace-nowrap">
               {/* 1. بوت الطوارئ */}
-              {onOpenBotConfig && (
+              {onOpenBotConfig && (uiConfig?.showEmergencyBotBtn !== false) && (
                 <button
                   type="button"
                   onClick={onOpenBotConfig}
@@ -324,7 +386,7 @@ export const Header: React.FC<HeaderProps> = ({
               )}
 
               {/* 2. مكتبة سجل رصد الكاميرا */}
-              {onOpenHistoryLog && (
+              {onOpenHistoryLog && (uiConfig?.showCameraLibraryBtn !== false) && (
                 <button
                   type="button"
                   onClick={onOpenHistoryLog}
@@ -337,86 +399,109 @@ export const Header: React.FC<HeaderProps> = ({
               )}
 
               {/* 3. شات السلامة الداخلي */}
-              <button
-                type="button"
-                onClick={onOpenChat}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition"
-                title="قنوات الاتصال الميداني المباشر"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
-                <span>شات السلامة الداخلي</span>
-              </button>
+              {(uiConfig?.showSafetyChatBtn !== false) && (
+                <button
+                  type="button"
+                  onClick={onOpenChat}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition"
+                  title="قنوات الاتصال الميداني المباشر"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                  <span>شات السلامة الداخلي</span>
+                </button>
+              )}
 
               <span className="h-5 w-px bg-slate-800 mx-1"></span>
 
               {/* 4. مركز تحكم HSE */}
-              <button
-                type="button"
-                onClick={() => onSelectTab('management')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                  currentTab === 'management'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                    : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                <span>مركز تحكم HSE</span>
-              </button>
+              {(uiConfig?.showManagementTab !== false) && (
+                <button
+                  type="button"
+                  onClick={() => onSelectTab('management')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    currentTab === 'management'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                      : 'text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span>مركز تحكم HSE</span>
+                </button>
+              )}
 
               {/* 5. خرائط النقاط الساخنة */}
-              <button
-                type="button"
-                onClick={() => onSelectTab('heatmap')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                  currentTab === 'heatmap'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                    : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <MapPin className="w-4 h-4" />
-                <span>خرائط النقاط الساخنة</span>
-              </button>
+              {(uiConfig?.showHeatmapTab !== false) && (
+                <button
+                  type="button"
+                  onClick={() => onSelectTab('heatmap')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    currentTab === 'heatmap'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                      : 'text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <MapPin className="w-4 h-4" />
+                  <span>خرائط النقاط الساخنة</span>
+                </button>
+              )}
 
               {/* 6. تحليل الأسباب الجذرية */}
-              <button
-                type="button"
-                onClick={() => onSelectTab('rootcause')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                  currentTab === 'rootcause'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                    : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span>تحليل الأسباب الجذرية</span>
-              </button>
+              {(uiConfig?.showRootCauseTab !== false) && (
+                <button
+                  type="button"
+                  onClick={() => onSelectTab('rootcause')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    currentTab === 'rootcause'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                      : 'text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span>تحليل الأسباب الجذرية</span>
+                </button>
+              )}
 
               {/* 7. أبطال السلامة */}
-              <button
-                type="button"
-                onClick={() => onSelectTab('gamification')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                  currentTab === 'gamification'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                    : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <Trophy className="w-4 h-4" />
-                <span>أبطال السلامة</span>
-              </button>
+              {(uiConfig?.showHeroesTab !== false) && (
+                <button
+                  type="button"
+                  onClick={() => onSelectTab('gamification')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    currentTab === 'gamification'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                      : 'text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <Trophy className="w-4 h-4" />
+                  <span>أبطال السلامة</span>
+                </button>
+              )}
             </div>
 
             {/* Quick Field App preview for General Director if desired */}
+            {(uiConfig?.showFieldTab !== false) && (
+              <button
+                type="button"
+                onClick={() => onSelectTab('field')}
+                className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold transition ${
+                  currentTab === 'field'
+                    ? 'bg-slate-800 text-amber-300 border-amber-500/40'
+                    : 'text-slate-400 border-transparent hover:text-slate-200'
+                }`}
+              >
+                استمارة الرصد الميداني
+              </button>
+            )}
+
+            {/* Quick Access to System Admin Panel */}
             <button
               type="button"
-              onClick={() => onSelectTab('field')}
-              className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold transition ${
-                currentTab === 'field'
-                  ? 'bg-slate-800 text-amber-300 border-amber-500/40'
-                  : 'text-slate-400 border-transparent hover:text-slate-200'
-              }`}
+              onClick={() => onSelectTab('system_admin')}
+              className="text-[11px] px-3 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-400/50 font-bold transition flex items-center gap-1.5 shadow"
+              title="الانتقال إلى لوحة تحكم مدير النظام الجديدة واعتمادها"
             >
-              استمارة الرصد الميداني
+              <Cpu className="w-3.5 h-3.5 text-purple-300" />
+              <span>لوحة مدير النظام الجديدة</span>
             </button>
           </div>
         </div>
@@ -449,7 +534,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {onOpenHistoryLog && (
+            {onOpenHistoryLog && (uiConfig?.showCameraLibraryBtn !== false) && (
               <button
                 type="button"
                 onClick={onOpenHistoryLog}
@@ -460,14 +545,16 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={onOpenChat}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition whitespace-nowrap"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
-              <span>الشات</span>
-            </button>
+            {(uiConfig?.showSafetyChatBtn !== false) && (
+              <button
+                type="button"
+                onClick={onOpenChat}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition whitespace-nowrap"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                <span>الشات</span>
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -497,7 +584,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {onOpenHistoryLog && (
+            {onOpenHistoryLog && (uiConfig?.showCameraLibraryBtn !== false) && (
               <button
                 type="button"
                 onClick={onOpenHistoryLog}
@@ -508,14 +595,16 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={onOpenChat}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
-              <span>شات السلامة</span>
-            </button>
+            {(uiConfig?.showSafetyChatBtn !== false) && (
+              <button
+                type="button"
+                onClick={onOpenChat}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                <span>شات السلامة</span>
+              </button>
+            )}
           </div>
         </div>
       )}

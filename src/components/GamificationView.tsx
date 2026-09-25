@@ -13,6 +13,7 @@ import {
   User,
   Users,
   Zap,
+  ArrowRight,
 } from 'lucide-react';
 import { SafetyUser } from '../types';
 
@@ -20,11 +21,13 @@ interface GamificationViewProps {
   users: SafetyUser[];
   currentUser: SafetyUser;
   onClaimReward?: (rewardName: string, cost: number) => void;
+  onBack?: () => void;
 }
 
 export const GamificationView: React.FC<GamificationViewProps> = ({
   users,
   currentUser,
+  onBack,
 }) => {
   const [claimedReward, setClaimedReward] = useState<string | null>(null);
   const [userPoints, setUserPoints] = useState<number>(currentUser.points);
@@ -75,6 +78,24 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Universal Page Back / Exit Bar */}
+      <div className="flex items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-3 rounded-2xl shadow-sm">
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-amber-500/40 text-xs font-bold transition group"
+          >
+            <ArrowRight className="w-4 h-4 rtl:rotate-0 ltr:rotate-180 group-hover:-translate-x-1 transition-transform text-amber-400" />
+            <span>تراجع / رجوع للصفحة الرئيسية</span>
+          </button>
+        ) : <div />}
+
+        <div className="text-xs text-slate-400">
+          أنت الآن في: <strong className="text-amber-400">لوحة شرف ومكافآت أبطال السلامة (Safety Champions)</strong>
+        </div>
+      </div>
+
       {/* Top Banner */}
       <div className="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
