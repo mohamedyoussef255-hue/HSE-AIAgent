@@ -15,6 +15,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { INITIAL_AUTH_USERS } from '../data/advancedMockData';
+import { StopSignLogo } from './StopSignLogo';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ interface LoginModalProps {
   language: Language;
   initialTab?: 'EMPLOYEES' | 'MANAGEMENT';
   directorSecretCode?: string;
+  onOpenAdminLogin?: () => void;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({
@@ -32,9 +34,31 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   language,
   initialTab = 'EMPLOYEES',
   directorSecretCode = 'HSE-7700',
+  onOpenAdminLogin,
 }) => {
   const t = getT(language);
   const [activeSection, setActiveSection] = useState<'EMPLOYEES' | 'MANAGEMENT'>(initialTab);
+  const [stopClickCount, setStopClickCount] = useState<number>(0);
+  const [clickTimer, setClickTimer] = useState<any>(null);
+
+  const handleStopLogoClick = () => {
+    if (!onOpenAdminLogin) return;
+    const nextCount = stopClickCount + 1;
+    setStopClickCount(nextCount);
+
+    if (clickTimer) clearTimeout(clickTimer);
+
+    if (nextCount >= 5) {
+      setStopClickCount(0);
+      onClose();
+      onOpenAdminLogin();
+    } else {
+      const timer = setTimeout(() => {
+        setStopClickCount(0);
+      }, 3000);
+      setClickTimer(timer);
+    }
+  };
 
   // Field Workers Form State
   const [employeeName, setEmployeeName] = useState('');
@@ -122,13 +146,33 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
         {/* Top Header */}
         <div className="p-6 bg-slate-950/80 border-b border-slate-800 text-center space-y-3">
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-              <LogIn className="w-5 h-5" />
+          <div className="flex flex-col items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={handleStopLogoClick}
+              className="p-1 rounded-2xl hover:bg-slate-900 transition-all cursor-pointer active:scale-95 relative group focus:outline-none"
+              title="اضغط 5 مرات للدخول كمدير نظام (كلمة السر 0000)"
+            >
+              <StopSignLogo className="w-12 h-12" withGlow />
+              {stopClickCount > 0 && stopClickCount < 5 && (
+                <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-rose-600 text-white text-[10px] font-black rounded-full animate-bounce shadow border border-white">
+                  {stopClickCount}/5
+                </span>
+              )}
+            </button>
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                <LogIn className="w-4 h-4" />
+              </div>
+              <h3 className="text-xl font-black text-slate-100">
+                {language === 'ar' ? 'تسجيل الدخول لمنظومة STOP للسلامة' : 'STOP Safety System Sign-in'}
+              </h3>
             </div>
-            <h3 className="text-xl font-black text-slate-100">
-              {language === 'ar' ? 'تسجيل الدخول لمنظومة STOP للسلامة' : 'STOP Safety System Sign-in'}
-            </h3>
+            <p className="text-[11px] text-slate-400">
+              {language === 'ar'
+                ? 'يمكنك النقر 5 مرات على شعار STOP أعلاه للدخول كمدير نظام (كلمة السر 0000)'
+                : 'Click STOP logo 5 times to enter as System Admin (password: 0000)'}
+            </p>
           </div>
 
           {/* TWO MAIN SECTIONS (قسم العاملين | قسم الإدارة HSE) */}

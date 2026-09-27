@@ -75,6 +75,7 @@ export const EmergencyBanner: React.FC<EmergencyBannerProps> = ({
 
   return (
     <div
+      data-banner="true"
       className={`border-b z-40 transition-all ${
         isEvacuation
           ? 'bg-rose-950/95 border-rose-500 text-rose-100 shadow-xl'

@@ -40,15 +40,15 @@ export const ThemeAndPaletteModal: React.FC<ThemeAndPaletteModalProps> = ({
         </button>
 
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
-            <Palette className="w-4 h-4" />
-            <span>{language === 'ar' ? 'تخصيص المظهر الشامل وبنتونة الألوان' : 'Comprehensive Theme & Palette Customizer'}</span>
+          <div className="inline-flex items-center gap-2 text-slate-300 font-bold text-xs uppercase tracking-wider">
+            <Palette className="w-4 h-4 text-slate-300" />
+            <span>{language === 'ar' ? 'تخصيص المظهر وبنتونة الألوان' : 'Theme & Palette Customizer'}</span>
           </div>
           <h3 className="text-xl font-black text-slate-100">{t.colorPalette}</h3>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 leading-relaxed">
             {language === 'ar'
-              ? 'اختر من بين 11 بنتونة ألوان هندسية معتمدة، ويتم تطبيق الطابع تلقائياً وبانسجام على الوضعين الليلي والنهاري'
-              : 'Select from 11 verified engineering palettes, dynamically applied across both Dark and Light modes'}
+              ? 'اختر من بين 11 بنتونة ألوان هندسية معتمدة؛ يتم تطبيق البنتونة حصرياً على الأيقونات فقط دون المساس بالخلفيات أو البنرات أو المسطرة.'
+              : 'Select from 11 verified engineering palettes; applied exclusively to icons without changing backgrounds, banners, or the navigation ruler.'}
           </p>
         </div>
 
@@ -116,9 +116,12 @@ export const ThemeAndPaletteModal: React.FC<ThemeAndPaletteModalProps> = ({
                   key={pal.id}
                   type="button"
                   onClick={() => onSelectPalette(pal.id)}
+                  style={{
+                    borderColor: isSelected ? pal.bgHex : undefined,
+                  }}
                   className={`p-3 rounded-2xl border text-right transition-all flex items-center justify-between ${
                     isSelected
-                      ? 'bg-slate-800 border-amber-400 ring-2 ring-amber-400/40 shadow-xl'
+                      ? 'bg-slate-800 shadow-xl ring-2'
                       : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900/90'
                   }`}
                 >

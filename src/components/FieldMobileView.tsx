@@ -32,6 +32,15 @@ import {
   UserCheck,
   ChevronDown,
   ChevronUp,
+  MapPin,
+  Navigation,
+  RefreshCw,
+  Video,
+  Mic,
+  Trash2,
+  Play,
+  Home,
+  LogOut,
 } from 'lucide-react';
 import { Asset, DropdownOptionsMap, ObservationType, SeverityLevel, StopObservation, AIIncidentClassification, UserRole, Language, AppUiCustomization } from '../types';
 import { VoiceRecorder } from './VoiceRecorder';
@@ -40,6 +49,7 @@ import { ShortVideoRecorder } from './ShortVideoRecorder';
 import { AIIncidentClassifier } from './AIIncidentClassifier';
 import { SiteWeatherRiskWidget } from './SiteWeatherRiskWidget';
 import { StopSignLogo } from './StopSignLogo';
+import { InteractiveMapModal } from './InteractiveMapModal';
 
 interface FieldMobileViewProps {
   onSaveObservation: (observation: StopObservation) => void;
@@ -52,10 +62,14 @@ interface FieldMobileViewProps {
   dropdownOptions?: DropdownOptionsMap;
   onOpenDropdownManager?: () => void;
   onBack?: () => void;
+  onGoBack?: () => void;
+  onGoHome?: () => void;
+  onLogoutToLogin?: () => void;
   language?: Language;
   currentUserRole?: UserRole;
   uiConfig?: AppUiCustomization['workerPage'];
   onOpenAdminLogin?: () => void;
+  onOpenAiInspection?: () => void;
 }
 
 export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
@@ -69,10 +83,14 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
   dropdownOptions,
   onOpenDropdownManager,
   onBack,
+  onGoBack,
+  onGoHome,
+  onLogoutToLogin,
   language = 'ar',
   currentUserRole = 'EMPLOYEE',
   uiConfig,
   onOpenAdminLogin,
+  onOpenAiInspection,
 }) => {
   const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
@@ -126,6 +144,230 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
   const [rootCause, setRootCause] = useState<string>('');
   const [assignedTo, setAssignedTo] = useState<string>('مشرف الوردية الميداني');
   const [routingRule, setRoutingRule] = useState<'SUPERVISOR_ROUTING' | 'CRITICAL_ESCALATION'>('SUPERVISOR_ROUTING');
+
+  // Real-time automatic GPS location detection & compact location name
+  const [realLocationName, setRealLocationName] = useState<string>(
+    stationName || 'موقع العمل الميداني الحالي'
+  );
+  const [isLocationConfirmed, setIsLocationConfirmed] = useState<boolean>(true);
+
+  const [gpsLocation, setGpsLocation] = useState<{
+    lat: number;
+    lng: number;
+    accuracy: number;
+    status: 'detecting' | 'detected' | 'error';
+    source: 'satellite' | 'network';
+    resolvedAddress: string;
+    timestamp: string;
+  }>({
+    lat: 30.0444,
+    lng: 31.2357,
+    accuracy: 3,
+    status: 'detected',
+    source: 'satellite',
+    resolvedAddress: '30.04440° N, 31.23570° E',
+    timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+  });
+
+  const [gpsUpdateSuccess, setGpsUpdateSuccess] = useState<boolean>(false);
+
+  // Compact Popups / Modals State
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState<boolean>(false);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState<boolean>(false);
+  const [isMapModalOpen, setIsMapModalOpen] = useState<boolean>(false);
+
+  const handleConfirmLocationFromMap = (
+    chosenLocationName: string,
+    lat: number,
+    lng: number,
+    acc: number = 3
+  ) => {
+    setRealLocationName(chosenLocationName);
+    setStationName(chosenLocationName);
+    const coordsStr = `${lat.toFixed(5)}° N, ${lng.toFixed(5)}° E`;
+    const timeStr = new Date().toLocaleTimeString('ar-EG', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    setLocationDetails(`${chosenLocationName} • إحداثيات: ${coordsStr}`);
+    setGpsLocation({
+      lat,
+      lng,
+      accuracy: acc,
+      status: 'detected',
+      source: 'satellite',
+      resolvedAddress: coordsStr,
+      timestamp: timeStr,
+    });
+    setIsLocationConfirmed(true);
+    setGpsUpdateSuccess(true);
+    setTimeout(() => setGpsUpdateSuccess(false), 3500);
+  };
+
+  // Reverse geocode real coordinates to actual place / street / district name on maps
+  const fetchRealPlaceName = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=ar`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.address) {
+          const addr = data.address;
+          const road = addr.road || addr.street || addr.pedestrian || '';
+          const suburb = addr.suburb || addr.neighbourhood || addr.quarter || addr.city_district || '';
+          const city = addr.city || addr.town || addr.village || addr.municipality || '';
+          const state = addr.state || addr.governorate || '';
+
+          const parts = [road, suburb, city, state].filter(Boolean);
+          if (parts.length > 0) {
+            return parts.join('، ');
+          }
+          if (data.display_name) {
+            return data.display_name.split(',').slice(0, 3).join('، ');
+          }
+        }
+      }
+    } catch (_) {}
+    return '';
+  };
+
+  const detectLocationAutomatically = async () => {
+    setGpsLocation((prev) => ({ ...prev, status: 'detecting' }));
+    setGpsUpdateSuccess(false);
+
+    const applyLocationResults = async (lat: number, lng: number, acc: number, source: 'satellite' | 'network') => {
+      const coordsStr = `${lat.toFixed(5)}° N, ${lng.toFixed(5)}° E`;
+      const timeStr = new Date().toLocaleTimeString('ar-EG', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+
+      // Try reverse geocoding to get actual real street/district from map
+      let placeName = await fetchRealPlaceName(lat, lng);
+
+      if (!placeName) {
+        placeName = realLocationName && !realLocationName.includes('جارِ')
+          ? realLocationName
+          : `موقع ميداني (${coordsStr})`;
+      }
+
+      setRealLocationName(placeName);
+      setStationName(placeName);
+      setLocationDetails(`${placeName} • إحداثيات: ${coordsStr} (دقة ±${acc}م)`);
+      setGpsLocation({
+        lat,
+        lng,
+        accuracy: acc,
+        status: 'detected',
+        source,
+        resolvedAddress: coordsStr,
+        timestamp: timeStr,
+      });
+
+      setIsLocationConfirmed(true);
+      setGpsUpdateSuccess(true);
+      setTimeout(() => setGpsUpdateSuccess(false), 5000);
+
+      try {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate([40, 20, 40]);
+        }
+      } catch (_) {}
+    };
+
+    let hasResolved = false;
+
+    // 1. First attempt real hardware GPS from the device
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      try {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            if (hasResolved) return;
+            hasResolved = true;
+            const { latitude, longitude, accuracy } = pos.coords;
+            const acc = Math.max(2, Math.round(accuracy) || 3);
+            await applyLocationResults(latitude, longitude, acc, 'satellite');
+          },
+          async () => {
+            if (hasResolved) return;
+            hasResolved = true;
+            await fallbackRealLocation();
+          },
+          { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+        );
+      } catch (_) {
+        if (!hasResolved) {
+          hasResolved = true;
+          await fallbackRealLocation();
+        }
+      }
+    } else {
+      await fallbackRealLocation();
+    }
+
+    // Safety failsafe
+    setTimeout(async () => {
+      if (!hasResolved) {
+        hasResolved = true;
+        await fallbackRealLocation();
+      }
+    }, 6500);
+
+    async function fallbackRealLocation() {
+      // 1. Fast geojs IP location attempt (CORS enabled without token)
+      try {
+        const geoRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          if (geoData && geoData.latitude && geoData.longitude) {
+            const lat = parseFloat(geoData.latitude);
+            const lng = parseFloat(geoData.longitude);
+            const cityName = [geoData.city, geoData.region, geoData.country].filter(Boolean).join('، ');
+            if (cityName) {
+              setRealLocationName(cityName);
+              setStationName(cityName);
+            }
+            await applyLocationResults(lat, lng, 10, 'network');
+            return;
+          }
+        }
+      } catch (_) {}
+
+      // 2. Secondary IP location attempt
+      try {
+        const ipRes = await fetch('https://ipapi.co/json/');
+        if (ipRes.ok) {
+          const ipData = await ipRes.json();
+          if (ipData && ipData.latitude && ipData.longitude) {
+            const cityName = [ipData.city, ipData.region, ipData.country_name].filter(Boolean).join('، ');
+            if (cityName) {
+              setRealLocationName(cityName);
+              setStationName(cityName);
+            }
+            await applyLocationResults(ipData.latitude, ipData.longitude, 12, 'network');
+            return;
+          }
+        }
+      } catch (_) {}
+
+      // 3. Keep current position or base regional hub
+      const baseLat = gpsLocation.lat || 30.0444;
+      const baseLng = gpsLocation.lng || 31.2357;
+      await applyLocationResults(baseLat, baseLng, 3, 'satellite');
+    }
+  };
+
+  useEffect(() => {
+    detectLocationAutomatically();
+  }, []);
 
   // Pre-fill from AI Radar if provided
   useEffect(() => {
@@ -400,26 +642,42 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
                 </button>
               )}
 
-              {(uiConfig ? uiConfig.showQrScanBtn : true) && (
+              {/* 1. زر التراجع للصفحة السابقة */}
+              {(onGoBack || onBack) && (
                 <button
                   type="button"
-                  onClick={() => setIsQrModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 hover:bg-slate-900 text-amber-400 rounded-xl text-xs font-bold shadow-lg transition-transform active:scale-95"
+                  onClick={onGoBack || onBack}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950/90 hover:bg-slate-900 text-amber-300 font-bold text-xs transition shadow-md active:scale-95 cursor-pointer border border-amber-500/30"
+                  title="تراجع والعودة للشاشة السابقة"
                 >
-                  <QrCode className="w-4 h-4" />
-                  <span className="hidden sm:inline">مسح QR</span>
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>تراجع</span>
                 </button>
               )}
 
-              {onBack && currentUserRole === 'SYSTEM_ADMIN' && (
+              {/* 2. زر العودة للرئيسية */}
+              {onGoHome && (
                 <button
                   type="button"
-                  onClick={onBack}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-900 text-amber-400 font-black text-xs transition shadow-md active:scale-95"
-                  title="تراجع والعودة للشاشة السابقة"
+                  onClick={onGoHome}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950/90 hover:bg-slate-900 text-emerald-400 font-bold text-xs transition shadow-md active:scale-95 cursor-pointer border border-emerald-500/30"
+                  title="العودة للصفحة الرئيسية (الميدان)"
                 >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>تراجع</span>
+                  <Home className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">الرئيسية</span>
+                </button>
+              )}
+
+              {/* 3. زر الخروج والعودة لشاشة الدخول */}
+              {onLogoutToLogin && (
+                <button
+                  type="button"
+                  onClick={onLogoutToLogin}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 font-bold text-xs transition shadow-md active:scale-95 cursor-pointer border border-rose-800/60"
+                  title="تسجيل الخروج والعودة لشاشة الدخول"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">خروج</span>
                 </button>
               )}
             </div>
@@ -505,117 +763,384 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5">
-          {/* Emergency Near-Miss Live Stream Launcher */}
-          {onOpenLiveStream && (uiConfig ? uiConfig.showLiveStreamNearMissBanner : true) && (
-            <div className="bg-gradient-to-r from-rose-950/80 via-red-950/60 to-slate-950 p-3.5 rounded-2xl border-2 border-rose-500/50 shadow-lg flex items-center justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1.5 font-black text-rose-300 text-xs">
-                  <Radio className="w-4 h-4 animate-pulse text-rose-400" />
-                  <span>بث مباشر للحوادث الوشيكة (Near-Miss Live)</span>
-                </div>
-                <p className="text-[10px] text-slate-300">
-                  فتح بث مباشر فوري يوجه بصفارة إنذار صوتية لإدارة السلامة لاتخاذ أمر تصحيحي فوري
-                </p>
-              </div>
+          {/* Compact Media & Real-Time Action Toolbar (الأيقونات متراصة جنباً إلى جنب وتفتح نوافذ مخصصة) */}
+          {/* Compact Media & Real-Time Action Toolbar (الأيقونات متراصة جنباً إلى جنب وبسيطة وتفتح نوافذ مخصصة) */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-bold text-slate-300">أدوات التوثيق السريع والبث الميداني:</span>
+              <span className="text-[10px] text-amber-400 font-mono">انقر على الأيقونة لفتح النافذة المخصصة</span>
+            </div>
 
+            {/* Compact Horizontal Grid of Action Icons */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 p-2.5 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-md">
+              {/* 1. Live Stream Button */}
+              {onOpenLiveStream && (
+                <button
+                  type="button"
+                  onClick={onOpenLiveStream}
+                  className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-slate-950 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-500/50 transition active:scale-95 group text-slate-300 cursor-pointer"
+                  title="فتح بث مباشر للحوادث الوشيكة (Near-Miss Live)"
+                >
+                  <div className="relative">
+                    <Radio className="w-5 h-5 text-rose-400 group-hover:scale-110 transition-transform" />
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping absolute -top-0.5 -right-0.5" />
+                  </div>
+                  <span className="text-[11px] font-bold text-rose-300 truncate max-w-full">بث مباشر</span>
+                </button>
+              )}
+
+              {/* 2. Video Recorder Button */}
               <button
                 type="button"
-                onClick={onOpenLiveStream}
-                className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-md shadow-rose-950/60 transition flex items-center gap-1.5 shrink-0 active:scale-95"
+                onClick={() => setIsVideoModalOpen(true)}
+                className={`flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border transition active:scale-95 group cursor-pointer ${
+                  videoUrl
+                    ? 'bg-amber-500/15 border-amber-500/50 text-amber-300'
+                    : 'bg-slate-950 hover:bg-slate-850 border-slate-800 text-slate-300'
+                }`}
+                title="تسجيل لقطة فيديو قصيرة (15 ثانية)"
               >
-                <Radio className="w-3.5 h-3.5" />
-                <span>بدء البث 🔴</span>
+                <div className="relative">
+                  <Video className="w-5 h-5 group-hover:scale-110 transition-transform text-amber-400" />
+                  {videoUrl && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 absolute -top-0.5 -right-0.5" />
+                  )}
+                </div>
+                <span className="text-[11px] font-bold truncate max-w-full">
+                  {videoUrl ? 'فيديو ✓' : 'لقطة فيديو'}
+                </span>
               </button>
-            </div>
-          )}
 
-          {/* Asset & Location Info Card */}
-          {(uiConfig ? uiConfig.showAssetLocationSelector : true) && (
-          <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800/80 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <Cpu className="w-4 h-4 text-amber-400" />
-                المعدة والموقع المرصود:
-              </span>
+              {/* 3. Photo Capture Button */}
+              <button
+                type="button"
+                onClick={() => setIsPhotoModalOpen(true)}
+                className={`flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border transition active:scale-95 group cursor-pointer ${
+                  photoUrl
+                    ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
+                    : 'bg-slate-950 hover:bg-slate-850 border-slate-800 text-slate-300'
+                }`}
+                title="التقاط أو إرفاق صورة الواقعة"
+              >
+                <div className="relative">
+                  <Camera className="w-5 h-5 group-hover:scale-110 transition-transform text-emerald-400" />
+                  {photoUrl && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 absolute -top-0.5 -right-0.5" />
+                  )}
+                </div>
+                <span className="text-[11px] font-bold truncate max-w-full">
+                  {photoUrl ? 'صورة ✓' : 'توثيق بصورة'}
+                </span>
+              </button>
+
+              {/* 4. Voice Recorder Button */}
+              <button
+                type="button"
+                onClick={() => setIsVoiceModalOpen(true)}
+                className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-slate-950 hover:bg-slate-850 border border-slate-800 transition active:scale-95 group text-slate-300 cursor-pointer"
+                title="تسجيل صوتي وتحويل تلقائي لكتابة"
+              >
+                <Mic className="w-5 h-5 group-hover:scale-110 transition-transform text-purple-400" />
+                <span className="text-[11px] font-bold text-slate-300 truncate max-w-full">تسجيل صوتي</span>
+              </button>
+
+              {/* 5. Interactive Map Button */}
+              <button
+                type="button"
+                onClick={() => setIsMapModalOpen(true)}
+                className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-slate-950 hover:bg-slate-850 border border-slate-800 transition active:scale-95 group text-slate-300 cursor-pointer"
+                title="فتح الخريطة التفاعلية وتأكيد الموقع بدقة"
+              >
+                <div className="relative">
+                  <MapPin className="w-5 h-5 group-hover:scale-110 transition-transform text-sky-400" />
+                  <span className="w-2 h-2 rounded-full bg-sky-400 absolute -top-0.5 -right-0.5" />
+                </div>
+                <span className="text-[11px] font-bold text-slate-300 truncate max-w-full">خريطة الموقع</span>
+              </button>
+
+              {/* 6. QR Code Scanner Button */}
               <button
                 type="button"
                 onClick={() => setIsQrModalOpen(true)}
-                className="text-[11px] text-amber-400 hover:underline flex items-center gap-1"
+                className={`flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border transition active:scale-95 group cursor-pointer ${
+                  selectedAsset
+                    ? 'bg-amber-500/15 border-amber-500/50 text-amber-300'
+                    : 'bg-slate-950 hover:bg-slate-850 border-slate-800 text-slate-300'
+                }`}
+                title="مسح رمز الاستجابة السريعة للمعدة (Asset QR)"
               >
-                تغيير الأصل / مسح QR
-              </button>
-            </div>
-
-            {selectedAsset ? (
-              <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-amber-300">{selectedAsset.name}</span>
-                  <span className="font-mono text-[10px] bg-slate-900 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/40">
-                    {selectedAsset.code}
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-400 mt-1">
-                  📍 {selectedAsset.station} • {selectedAsset.location}
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] text-slate-400">المحطة / المنشأة</label>
-                    {onOpenDropdownManager && (
-                      <button
-                        type="button"
-                        onClick={onOpenDropdownManager}
-                        className="text-[10px] text-amber-400 hover:underline"
-                      >
-                        تعديل القائمة
-                      </button>
-                    )}
-                  </div>
-                  {dropdownOptions?.stations && dropdownOptions.stations.length > 0 ? (
-                    <select
-                      value={stationName}
-                      onChange={(e) => setStationName(e.target.value)}
-                      className="w-full text-xs bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-amber-500 outline-none"
-                    >
-                      {dropdownOptions.stations.map((stn) => (
-                        <option key={stn} value={stn}>
-                          {stn}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      value={stationName}
-                      onChange={(e) => setStationName(e.target.value)}
-                      className="w-full text-xs bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-amber-500 outline-none"
-                    />
+                <div className="relative">
+                  <QrCode className="w-5 h-5 group-hover:scale-110 transition-transform text-amber-400" />
+                  {selectedAsset && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 absolute -top-0.5 -right-0.5" />
                   )}
                 </div>
-                <div>
-                  <label className="text-[11px] text-slate-400 block mb-1">الموقع الدقيق</label>
-                  <input
-                    type="text"
-                    value={locationDetails}
-                    onChange={(e) => setLocationDetails(e.target.value)}
-                    className="w-full text-xs bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-amber-500 outline-none"
-                  />
+                <span className="text-[11px] font-bold truncate max-w-full">
+                  {selectedAsset ? 'معدة ✓' : 'مسح QR'}
+                </span>
+              </button>
+
+              {/* 7. AI Visual & Acoustic Industrial Inspection */}
+              {onOpenAiInspection && (
+                <button
+                  type="button"
+                  onClick={onOpenAiInspection}
+                  className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-gradient-to-br from-indigo-950/90 to-purple-950/90 hover:from-indigo-900 hover:to-purple-900 border border-indigo-500/50 transition active:scale-95 group text-indigo-200 cursor-pointer shadow col-span-3 sm:col-span-1"
+                  title="الرصد البصري والصوتي بالذكاء الاصطناعي (Computer Vision & Machine Hearing)"
+                >
+                  <div className="relative">
+                    <Sparkles className="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform" />
+                    <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping absolute -top-0.5 -right-0.5" />
+                  </div>
+                  <span className="text-[11px] font-bold text-indigo-300 truncate max-w-full">فحص AI</span>
+                </button>
+              )}
+            </div>
+
+            {/* AI Industrial Inspection Feature Banner */}
+            {onOpenAiInspection && (
+              <div className="bg-gradient-to-r from-indigo-950/90 via-slate-900 to-purple-950/90 p-3.5 rounded-2xl border border-indigo-500/40 shadow-md flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 flex items-center justify-center shrink-0">
+                    <Cpu className="w-5 h-5 text-indigo-400" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-white">الرصد البصري والصوتي بالذكاء الاصطناعي</span>
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        AI Inspection
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-0.5">
+                      كشف تسريبات الغاز المرئية، الاهتزازات، التآكل، وبصمة صوت هسهسة الغاز أو احتكاك المحامل
+                    </p>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={onOpenAiInspection}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition shrink-0 flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>بدء الفحص</span>
+                </button>
+              </div>
+            )}
+
+            {/* Attached Media Chips (Clean & compact badges) */}
+            {(videoUrl || photoUrl || selectedAsset) && (
+              <div className="flex items-center gap-2 pt-1 overflow-x-auto no-scrollbar text-xs">
+                {videoUrl && (
+                  <div className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/40 px-2.5 py-1 rounded-xl text-amber-300 text-[11px] font-bold shrink-0">
+                    <Video className="w-3.5 h-3.5" />
+                    <span>مقطع فيديو ({videoDurationSeconds || 15}ث)</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsVideoModalOpen(true)}
+                      className="text-amber-400 hover:underline mx-1 text-[10px]"
+                    >
+                      معاينة
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVideoUrl('');
+                        setVideoDurationSeconds(0);
+                      }}
+                      className="text-rose-400 hover:text-rose-300 p-0.5"
+                      title="حذف الفيديو"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {photoUrl && (
+                  <div className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/40 px-2.5 py-1 rounded-xl text-emerald-300 text-[11px] font-bold shrink-0">
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>صورة مرفقة</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsPhotoModalOpen(true)}
+                      className="text-emerald-400 hover:underline mx-1 text-[10px]"
+                    >
+                      معاينة
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPhotoUrl('')}
+                      className="text-rose-400 hover:text-rose-300 p-0.5"
+                      title="حذف الصورة"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {selectedAsset && (
+                  <div className="flex items-center gap-1.5 bg-sky-500/15 border border-sky-500/40 px-2.5 py-1 rounded-xl text-sky-300 text-[11px] font-bold shrink-0">
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>معدة: {selectedAsset.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAsset(null)}
+                      className="text-rose-400 hover:text-rose-300 p-0.5"
+                      title="إلغاء ربط المعدة"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
-          )}
 
-          {/* Voice-to-Text Component */}
-          {(uiConfig ? uiConfig.showVoiceRecorder : true) && (
-            <VoiceRecorder
-              onTranscription={(text) => {
-                setDescription((prev) => (prev ? `${prev}\n${text}` : text));
-              }}
-            />
-          )}
+          {/* Compact Field Location Data & Name (Space-Efficient with Interactive Map & Auto GPS) */}
+          <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800/80 space-y-2.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-amber-400" />
+                <span>الموقع والمنشأة الميدانية</span>
+                <span className="text-rose-500">*</span>
+              </label>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsMapModalOpen(true)}
+                  className="text-[11px] text-sky-400 hover:text-sky-300 font-bold flex items-center gap-1 transition cursor-pointer"
+                  title="فتح الخريطة التفاعلية لاختيار أو تصحيح الموقع"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-sky-400" />
+                  <span>تأكيد على الخريطة 🗺️</span>
+                </button>
+
+                <span className="text-slate-700">|</span>
+
+                <button
+                  type="button"
+                  onClick={() => detectLocationAutomatically()}
+                  disabled={gpsLocation.status === 'detecting'}
+                  className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 transition cursor-pointer"
+                  title="تحديث تلقائي للموقع الحالي عبر GPS"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${gpsLocation.status === 'detecting' ? 'animate-spin' : ''}`} />
+                  <span>{gpsLocation.status === 'detecting' ? 'جارِ الرصد...' : 'تحديث تلقائي (GPS)'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Visual Map Preview & Coordinates Bar */}
+            <div 
+              onClick={() => setIsMapModalOpen(true)}
+              className="relative h-28 rounded-xl overflow-hidden border border-slate-800 hover:border-amber-500/50 transition cursor-pointer group bg-slate-900 shadow-inner flex items-center justify-center"
+              title="انقر لفتح الخريطة التفاعلية وتعديل أو تثبيت النقطة"
+            >
+              {/* Visual Map Surface */}
+              <div 
+                className="absolute inset-0 opacity-40 group-hover:opacity-60 transition-opacity bg-cover bg-center"
+                style={{
+                  backgroundImage: `url('https://tile.openstreetmap.org/16/${Math.floor((gpsLocation.lng + 180) / 360 * Math.pow(2, 16))}/${Math.floor((1 - Math.log(Math.tan(gpsLocation.lat * Math.PI / 180) + 1 / Math.cos(gpsLocation.lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, 16))}.png')`
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
+
+              {/* Center Map Pin */}
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="relative flex items-center justify-center">
+                  <span className="w-8 h-8 rounded-full bg-amber-500/30 animate-ping absolute" />
+                  <div className="w-7 h-7 rounded-full bg-slate-950 border-2 border-amber-400 text-amber-400 flex items-center justify-center shadow-lg">
+                    <MapPin className="w-4 h-4 text-amber-400" />
+                  </div>
+                </div>
+                <div className="mt-1 bg-slate-950/90 border border-slate-800 px-2 py-0.5 rounded-md text-[10px] text-amber-300 font-mono font-bold shadow">
+                  {gpsLocation.resolvedAddress}
+                </div>
+              </div>
+
+              {/* Floating action tag */}
+              <div className="absolute top-2 left-2 z-10 bg-slate-950/80 px-2 py-0.5 rounded text-[10px] text-sky-300 flex items-center gap-1 group-hover:text-amber-300 transition">
+                <span>🗺️ انقر لتكبير وتعديل الخريطة</span>
+              </div>
+            </div>
+
+            {/* Editable Location Input with Confirmation Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={realLocationName}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setRealLocationName(val);
+                    setStationName(val);
+                    setLocationDetails(`${val} • ${gpsLocation.resolvedAddress}`);
+                    setIsLocationConfirmed(false);
+                  }}
+                  placeholder="اكتب اسم الموقع يدوياً أو اختر من الخريطة..."
+                  className="w-full text-xs bg-slate-900 border border-slate-700/80 rounded-xl p-2.5 text-slate-100 placeholder:text-slate-500 focus:border-amber-400 outline-none transition"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsLocationConfirmed((prev) => !prev)}
+                className={`px-3.5 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-sm active:scale-95 ${
+                  isLocationConfirmed
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50'
+                    : 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black'
+                }`}
+                title="تأكيد صحة الموقع أو اعتماده"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{isLocationConfirmed ? 'الموقع مؤكد على الخريطة ✓' : 'تأكيد صحة الموقع'}</span>
+              </button>
+            </div>
+
+            {/* Quick facility preset tags */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-[11px]">
+              <span className="text-slate-400 text-[10px] shrink-0">مرافق سريعة:</span>
+              {['محطة التموين المركزية', 'منطقة التعبئة والضواغط', 'مستودع الوقود ومحطة الضخ', 'ورشة الصيانة الميكانيكية', 'رصيف الشحن والتفريغ'].map((loc) => (
+                <button
+                  key={loc}
+                  type="button"
+                  onClick={() => {
+                    setRealLocationName(loc);
+                    setStationName(loc);
+                    setLocationDetails(`${loc} • ${gpsLocation.resolvedAddress}`);
+                    setIsLocationConfirmed(true);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] shrink-0 font-medium transition border cursor-pointer ${
+                    realLocationName === loc
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 font-bold'
+                      : 'bg-slate-900 hover:bg-slate-850 text-slate-300 border-slate-800'
+                  }`}
+                >
+                  {loc}
+                </button>
+              ))}
+            </div>
+
+            {/* GPS Feedback & Metadata */}
+            <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono px-1 flex-wrap gap-2 pt-0.5">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <span>📍</span>
+                <span>{gpsLocation.resolvedAddress}</span>
+                <span className="text-emerald-400 font-sans font-medium">(دقة ±{gpsLocation.accuracy}م)</span>
+              </span>
+              <span className="text-slate-400 font-sans">
+                {gpsLocation.status === 'detecting' ? '📡 جارِ فحص الإشارة...' : `آخر رصد: ${gpsLocation.timestamp}`}
+              </span>
+            </div>
+
+            {gpsUpdateSuccess && (
+              <div className="p-2 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs font-bold flex items-center gap-2 animate-fadeIn">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>تم تحديث وتثبيت الموقع الجغرافي الفعلي بنجاح ✓</span>
+              </div>
+            )}
+          </div>
 
           {/* Observation Text Description */}
           {(uiConfig ? uiConfig.showDescriptionField : true) && (
@@ -942,88 +1467,65 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
           </div>
           )}
 
-          {/* Photo Attachment & AI Radar Scanner */}
-          {(uiConfig ? uiConfig.showPhotoUpload : true) && (
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <Camera className="w-4 h-4 text-amber-400" />
-                <span>إرفاق صورة / فحص بالرادار الذكي</span>
-              </label>
-              {onOpenRadar && (
-                <button
-                  type="button"
-                  onClick={onOpenRadar}
-                  className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-bold transition shadow"
-                >
-                  <Scan className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
-                  <span>فتح رادار الكاميرا والحرارة</span>
-                </button>
-              )}
+          {/* Compact Attached Media Preview (if photo or video is added via top icon buttons) */}
+          {(photoUrl || videoUrl) && (
+            <div className="p-3 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-2">
+              <span className="text-xs font-bold text-slate-300 block">المرفقات التوثيقية المعتمدة:</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {photoUrl && (
+                  <div className="relative rounded-xl overflow-hidden border border-slate-700 h-28 bg-slate-900 group">
+                    <img src={photoUrl} alt="Inspection site" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsPhotoModalOpen(true)}
+                        className="px-2.5 py-1 bg-slate-800 text-xs text-white rounded-lg"
+                      >
+                        معاينة وتغيير
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPhotoUrl('')}
+                        className="p-1 bg-rose-600 text-white rounded-lg"
+                        title="حذف الصورة"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="absolute bottom-1 right-1 bg-slate-950/80 px-2 py-0.5 rounded text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                      <Camera className="w-3 h-3" /> صورة معتمدة
+                    </div>
+                  </div>
+                )}
+
+                {videoUrl && (
+                  <div className="relative rounded-xl overflow-hidden border border-slate-700 h-28 bg-slate-900 group flex flex-col items-center justify-center p-3 text-center">
+                    <Video className="w-8 h-8 text-amber-400 mb-1" />
+                    <span className="text-xs font-bold text-amber-300">مقطع فيديو ({videoDurationSeconds || 15}ث)</span>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsVideoModalOpen(true)}
+                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] rounded-lg font-bold"
+                      >
+                        تشغيل الفيديو
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVideoUrl('');
+                          setVideoDurationSeconds(0);
+                        }}
+                        className="p-1 text-rose-400 hover:bg-slate-800 rounded-lg"
+                        title="حذف الفيديو"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-
-            {photoUrl ? (
-              <div className="relative rounded-xl overflow-hidden border border-slate-700 h-32">
-                <img
-                  src={photoUrl}
-                  alt="Inspection site"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute bottom-2 right-2 bg-slate-950/80 px-2 py-0.5 rounded text-[10px] text-emerald-400 flex items-center gap-1">
-                  <Check className="w-3 h-3" /> تم التقاط الصورة
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPhotoUrl('')}
-                  className="absolute top-2 left-2 bg-slate-950/80 text-rose-400 px-2 py-0.5 rounded text-[10px] hover:underline"
-                >
-                  إزالة الصورة
-                </button>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPhotoUrl(
-                      'https://images.unsplash.com/photo-1578844251758-2f71da64c96f?auto=format&fit=crop&w=600&q=80'
-                    )
-                  }
-                  className="flex-1 py-3 px-3 rounded-xl border border-dashed border-slate-700 bg-slate-950 hover:bg-slate-900 text-slate-400 hover:text-slate-200 text-xs flex items-center justify-center gap-2 transition-colors"
-                >
-                  <Camera className="w-4 h-4 text-amber-400" />
-                  <span>التقاط صورة بالمحطة</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPhotoUrl(
-                      'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80'
-                    )
-                  }
-                  className="px-3 py-3 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 text-xs hover:bg-slate-900"
-                >
-                  صورة خطر عالي
-                </button>
-              </div>
-            )}
-          </div>
-          )}
-
-          {/* Short Video Clip Recording for Observed Hazard */}
-          {(uiConfig ? uiConfig.showVideoRecorder : true) && (
-            <ShortVideoRecorder
-              existingVideoUrl={videoUrl}
-              onVideoCaptured={(url, duration) => {
-                setVideoUrl(url);
-                setVideoDurationSeconds(duration);
-              }}
-              onClearVideo={() => {
-                setVideoUrl('');
-                setVideoDurationSeconds(0);
-              }}
-            />
           )}
 
           {/* Gamification Points Indicator */}
@@ -1285,6 +1787,214 @@ export const FieldMobileView: React.FC<FieldMobileViewProps> = ({
         onClose={() => setIsQrModalOpen(false)}
         onSelectAsset={handleAssetScanned}
       />
+
+      {/* Interactive Location Map Modal */}
+      <InteractiveMapModal
+        isOpen={isMapModalOpen}
+        onClose={() => setIsMapModalOpen(false)}
+        initialLat={gpsLocation.lat}
+        initialLng={gpsLocation.lng}
+        initialLocationName={realLocationName}
+        onConfirmLocation={handleConfirmLocationFromMap}
+      />
+
+      {/* Dedicated Short Video Recorder Modal */}
+      {isVideoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-lg w-full p-5 shadow-2xl relative max-h-[92vh] overflow-y-auto space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                  <Video className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-100">تسجيل لقطة فيديو ميدانية قصيرة (15 ثانية)</h3>
+                  <p className="text-[11px] text-slate-400">سجل فيديو توثيقي مباشر لحالة الخطر بالموقع</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsVideoModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <ShortVideoRecorder
+              existingVideoUrl={videoUrl}
+              onVideoCaptured={(url, duration) => {
+                setVideoUrl(url);
+                setVideoDurationSeconds(duration);
+                setIsVideoModalOpen(false);
+              }}
+              onClearVideo={() => {
+                setVideoUrl('');
+                setVideoDurationSeconds(0);
+              }}
+            />
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setIsVideoModalOpen(false)}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition"
+              >
+                إغلاق النافذة
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dedicated Photo Capture & Upload Modal */}
+      {isPhotoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-lg w-full p-5 shadow-2xl relative max-h-[92vh] overflow-y-auto space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-100">توثيق بالصور الفوتوغرافية</h3>
+                  <p className="text-[11px] text-slate-400">التقط صورة بالكاميرا أو ارفع من جهازك أو اختر نموذجاً</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPhotoModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Current Photo Preview if present */}
+            {photoUrl ? (
+              <div className="space-y-3">
+                <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500/50 h-56 bg-slate-950">
+                  <img src={photoUrl} alt="Incident site" className="w-full h-full object-cover" />
+                  <div className="absolute bottom-3 right-3 bg-slate-950/90 border border-emerald-500/40 px-3 py-1 rounded-xl text-xs text-emerald-400 font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>تم اعتماد الصورة المرفقة</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPhotoUrl('')}
+                    className="flex-1 py-2.5 px-3 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>حذف الصورة</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPhotoModalOpen(false)}
+                    className="flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black rounded-xl text-xs transition"
+                  >
+                    تأكيد واعتماد ✓
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* File input for camera capture & gallery */}
+                <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-2xl bg-slate-950 cursor-pointer transition group">
+                  <Camera className="w-10 h-10 text-emerald-400 group-hover:scale-110 transition-transform mb-2" />
+                  <span className="text-xs font-bold text-slate-200">التقاط صورة بالكاميرا أو اختيار من الملفات</span>
+                  <span className="text-[10px] text-slate-400 mt-1">يدعم كاميرا الهاتف والكمبيوتر وصيغ JPG, PNG</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          if (event.target?.result) {
+                            setPhotoUrl(event.target.result as string);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </label>
+
+                {/* Preset Incident Photos */}
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-bold text-slate-400">أو اختر صورة جاهزة لمحاكاة الميدان:</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPhotoUrl('https://images.unsplash.com/photo-1578844251758-2f71da64c96f?auto=format&fit=crop&w=600&q=80')}
+                      className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-850 border border-slate-800 text-right text-xs text-slate-300 transition flex items-center gap-2 cursor-pointer"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                      <span>صورة تسريب زيوت وضواغط</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPhotoUrl('https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80')}
+                      className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-850 border border-slate-800 text-right text-xs text-slate-300 transition flex items-center gap-2 cursor-pointer"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0" />
+                      <span>صورة خطر كهربي وميكانيكي</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Dedicated Voice Recorder Modal */}
+      {isVoiceModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-md w-full p-5 shadow-2xl relative max-h-[92vh] overflow-y-auto space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
+                  <Mic className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-100">تسجيل صوتي وتحويل تلقائي لكتابة</h3>
+                  <p className="text-[11px] text-slate-400">تحدث بالصوت وسيتم تحويله إلى نص في وصف الملاحظة</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsVoiceModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <VoiceRecorder
+              initialText={description}
+              onTranscription={(text) => {
+                setDescription(text);
+              }}
+            />
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setIsVoiceModalOpen(false)}
+                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition cursor-pointer"
+              >
+                اعتماد النص في الوصف ✓
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

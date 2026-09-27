@@ -104,17 +104,17 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <StopSignLogo className="w-16 h-16" withGlow />
           </div>
           <div className="flex items-center justify-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <h3 className="text-lg font-black text-amber-400">
+            <Sparkles className="w-4 h-4 text-purple-400" />
+            <h3 className="text-lg font-black text-white">
               {language === 'ar'
-                ? 'بوابة دخول المدير العام للإدارة العامة للسلامة والصحة المهنية (HSE)'
-                : 'General Director of HSE Access Gate'}
+                ? 'بوابة دخول مدير النظام والتحكم الشامل (System Admin)'
+                : 'System Admin Control Gate'}
             </h3>
           </div>
           <p className="text-xs text-slate-400">
             {language === 'ar'
-              ? 'التحقق الرسمي لمدير عام الإدارة العامة للسلامة والصحة المهنية'
-              : 'Authorized HSE General Director verification gate'}
+              ? 'تم الضغط 5 مرات على شعار STOP للدخول والتحكم في كافة صفحات التطبيق'
+              : 'Triggered by 5-clicks on STOP logo for master application control'}
           </p>
         </div>
 
@@ -125,59 +125,66 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleAdminSubmit} className="space-y-3.5">
+        <form onSubmit={handleAdminSubmit} className="space-y-4">
           <div>
-            <label className="text-xs font-bold text-slate-300 block mb-1">
-              {t.adminEmailPrompt}
-            </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-amber-400 absolute right-3.5 top-3" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-950 border border-amber-500/40 focus:border-amber-400 rounded-xl pr-10 pl-3.5 py-2.5 text-xs text-slate-100 outline-none font-mono"
-              />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-200">
+                {language === 'ar' ? 'كلمة سر مدير النظام (Master Password):' : 'System Admin Password:'}
+              </label>
+              <span className="text-[10px] text-purple-300 bg-purple-500/20 border border-purple-500/40 px-2 py-0.5 rounded-full font-mono font-bold">
+                الافتراضية: 0000
+              </span>
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">
-              اسم المستخدم المعتمد: <span className="text-amber-300 font-mono">mohamedyoussef255@gmail.com</span>
-            </p>
-          </div>
-
-          <div>
-            <label className="text-xs font-bold text-slate-300 block mb-1">
-              {language === 'ar' ? 'كلمة سر مدير النظام (0000) أو كلمة سر المدير العام:' : 'System Admin Password (0000) or Director PIN:'}
-            </label>
             <div className="relative">
-              <KeyRound className="w-4 h-4 text-amber-400 absolute right-3.5 top-3" />
+              <KeyRound className="w-4 h-4 text-purple-400 absolute right-3.5 top-3" />
               <input
                 type="password"
                 required
-                placeholder="أدخل كلمة المرور (0000 أو 000000 HSE)"
+                autoFocus
+                placeholder="أدخل كلمة المرور (0000)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-950 border border-amber-500/40 focus:border-amber-400 rounded-xl pr-10 pl-3.5 py-2.5 text-xs text-slate-100 outline-none font-mono tracking-widest"
+                className="w-full bg-slate-950 border border-purple-500/50 focus:border-purple-400 rounded-xl pr-10 pl-3.5 py-2.5 text-sm text-purple-200 outline-none font-mono tracking-widest text-center"
               />
             </div>
-            <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
-              <span>كلمة سر مدير النظام الافتراضية: <strong className="text-purple-300 font-mono">0000</strong></span>
-              <span className="text-emerald-400 flex items-center gap-1 font-mono">
-                <MessageCircle className="w-3 h-3" /> WhatsApp Enabled
-              </span>
-            </div>
+          </div>
+
+          {/* Quick 1-Click Fast Fill for 0000 */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setPassword(adminPassword || '0000');
+                const sysAdmin = INITIAL_AUTH_USERS.find((u) => u.role === 'SYSTEM_ADMIN') || INITIAL_AUTH_USERS[1];
+                onLoginSuccess(sysAdmin);
+                onClose();
+              }}
+              className="flex-1 py-2 px-3 rounded-xl bg-purple-950/50 hover:bg-purple-900/60 border border-purple-500/40 text-purple-300 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <span>⚡ الدخول الفوري بكلمة السر الافتراضية (0000)</span>
+            </button>
           </div>
 
           <button
             type="submit"
-            className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-xl text-xs sm:text-sm shadow-lg transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black rounded-xl text-xs sm:text-sm shadow-xl shadow-purple-950/50 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
           >
-            <ShieldAlert className="w-4 h-4" />
+            <ShieldAlert className="w-4 h-4 text-amber-300" />
             <span>
-              {language === 'ar' ? 'تأكيد ودخول بصلاحيات المدير العام' : 'Authenticate & Unlock Director Role'}
+              {language === 'ar' ? 'تأكيد الدخول كمدير نظام (تحكم كامل)' : 'Authenticate as System Admin'}
             </span>
           </button>
         </form>
+
+        <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-2xl text-[11px] text-slate-400 space-y-1">
+          <p className="text-slate-300 font-bold flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span>صلاحيات مدير النظام:</span>
+          </p>
+          <p>
+            تمنحك التحكم الكامل في كافة صفحات التطبيق، تفعيل/تعطيل الأيقونات والصفحات، ضبط الرادار والقوائم، ويمكنك تعديل كلمة المرور (0000) لاحقاً في أي وقت من لوحة تحكم مدير النظام.
+          </p>
+        </div>
 
         {/* WhatsApp App Link Share Section for General Director */}
         <div className="pt-2 border-t border-slate-800 space-y-2">

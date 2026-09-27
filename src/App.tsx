@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Header, NavTab } from './components/Header';
+import { UniversalNavigationBar } from './components/UniversalNavigationBar';
 import { FieldMobileView } from './components/FieldMobileView';
 import { WebManagementView } from './components/WebManagementView';
 import { HotspotHeatmapView } from './components/HotspotHeatmapView';
@@ -20,6 +21,9 @@ import { LiveIncidentStreamModal } from './components/LiveIncidentStreamModal';
 import { MobileAppDownloadModal } from './components/MobileAppDownloadModal';
 import { PointsRewardsControlModal } from './components/PointsRewardsControlModal';
 import { SiteWeatherRiskWidget } from './components/SiteWeatherRiskWidget';
+import { AiIndustrialInspectionCenter } from './components/AiIndustrialInspectionCenter';
+import { AiLibraryConfig } from './types/aiInspection';
+import { DEFAULT_AI_LIBRARY_CONFIG } from './data/defaultAiInspectionLibrary';
 
 import {
   INITIAL_OBSERVATIONS,
@@ -71,6 +75,7 @@ const STORAGE_KEY_OFF_HOURS = 'minhaj_stop_off_hours_v2';
 const STORAGE_KEY_ADMIN_PASS = 'minhaj_stop_sys_admin_pass_v2';
 const STORAGE_KEY_UI_CUSTOM = 'minhaj_stop_ui_customization_v2';
 const STORAGE_KEY_CURRENT_TAB = 'minhaj_stop_current_tab_v2';
+const STORAGE_KEY_AI_LIBRARY = 'minhaj_stop_ai_library_v2';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<NavTab>(() => {
@@ -211,6 +216,61 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY_UI_CUSTOM, JSON.stringify(DEFAULT_APP_UI_CUSTOMIZATION));
     } catch (_) {}
   };
+
+  const [aiLibraryConfig, setAiLibraryConfig] = useState<AiLibraryConfig>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_AI_LIBRARY);
+      if (saved) return JSON.parse(saved);
+    } catch (_) {}
+    return DEFAULT_AI_LIBRARY_CONFIG;
+  });
+
+  const [isAiInspectionOpen, setIsAiInspectionOpen] = useState<boolean>(false);
+
+  const handleUpdateAiLibraryConfig = (newConfig: AiLibraryConfig) => {
+    setAiLibraryConfig(newConfig);
+    try {
+      localStorage.setItem(STORAGE_KEY_AI_LIBRARY, JSON.stringify(newConfig));
+    } catch (_) {}
+  };
+
+  const handleResetAiLibraryConfig = () => {
+    setAiLibraryConfig(DEFAULT_AI_LIBRARY_CONFIG);
+    try {
+      localStorage.setItem(STORAGE_KEY_AI_LIBRARY, JSON.stringify(DEFAULT_AI_LIBRARY_CONFIG));
+    } catch (_) {}
+  };
+
+  const handleConvertInspectionToObservation = (partialObs: Partial<StopObservation>) => {
+    const now = new Date();
+    const newObs: StopObservation = {
+      id: `STOP-AI-${Date.now().toString().slice(-4)}`,
+      ticketNumber: `TK-${Math.floor(1000 + Math.random() * 9000)}`,
+      date: now.toISOString().split('T')[0],
+      time: now.toTimeString().slice(0, 5),
+      observerName: authUser?.name || 'فاحص الذكاء الاصطناعي الصناعي (AI)',
+      observerId: authUser?.badgeNumber || 'AI-INSP-01',
+      observerRole: authUser?.role || 'HSE_OFFICER',
+      stationName: partialObs.stationName || 'محطة تموين وضغط الغاز الرئيسية',
+      locationDetails: partialObs.locationDetails || 'منظومة الرصد البصري والصوتي للضواغط',
+      description: partialObs.description || 'تم الرصد الآلي عبر نموذج الذكاء الاصطناعي المرجعي المعتمد.',
+      type: partialObs.type || 'حالة غير آمنة (Unsafe Condition)',
+      category: partialObs.category || 'ميكانيكا وضواغط الغاز',
+      severity: partialObs.severity || 'high',
+      riskScore: 88,
+      rootCause: partialObs.rootCause || 'اهتراء ميكانيكي / تسريب غاز بالضغط العالي',
+      immediateAction: partialObs.immediateAction || 'تم تطبيق بروتوكول العزل والإيقاف الطارئ الفوري.',
+      preventiveAction: partialObs.preventiveAction || 'إجراء العمرة وتغيير قطع الغيار التالفة وفقاً للبصمة المكتشفة.',
+      status: 'جديد (New)',
+      assignedTo: 'فريق الصيانة الميكانيكية والغاز',
+      routingRule: 'CRITICAL_ESCALATION',
+      isSynced: true,
+      pointsAwarded: 50,
+      photoUrl: partialObs.photoUrl,
+    };
+    handleSaveObservation(newObs);
+    setIsAiInspectionOpen(false);
+  };
   const [rewardsList, setRewardsList] = useState<RewardItem[]>([
     {
       id: 'REW-01',
@@ -254,7 +314,12 @@ export default function App() {
     setCurrentUser((prev) => (prev.id === userId ? { ...prev, points: Math.max(0, prev.points + addedPoints) } : prev));
   };
 
+  const [tabHistory, setTabHistory] = useState<NavTab[]>([]);
+
   const handleSelectTab = (tab: NavTab) => {
+    if (tab !== currentTab) {
+      setTabHistory((prev) => [...prev, currentTab]);
+    }
     if (tab === 'system_admin') {
       const adminUser = INITIAL_AUTH_USERS.find((u) => u.role === 'SYSTEM_ADMIN') || INITIAL_AUTH_USERS[1];
       setAuthUser(adminUser);
@@ -263,6 +328,41 @@ export default function App() {
     try {
       localStorage.setItem(STORAGE_KEY_CURRENT_TAB, tab);
     } catch (_) {}
+  };
+
+  const handleGoBack = () => {
+    if (tabHistory.length > 0) {
+      const prevTab = tabHistory[tabHistory.length - 1];
+      setTabHistory((prev) => prev.slice(0, -1));
+      setCurrentTab(prevTab);
+      try {
+        localStorage.setItem(STORAGE_KEY_CURRENT_TAB, prevTab);
+      } catch (_) {}
+    } else if (currentTab !== 'field') {
+      setCurrentTab('field');
+      try {
+        localStorage.setItem(STORAGE_KEY_CURRENT_TAB, 'field');
+      } catch (_) {}
+    }
+  };
+
+  const handleGoHome = () => {
+    if (currentTab !== 'field') {
+      setTabHistory((prev) => [...prev, currentTab]);
+      setCurrentTab('field');
+      try {
+        localStorage.setItem(STORAGE_KEY_CURRENT_TAB, 'field');
+      } catch (_) {}
+    }
+  };
+
+  const handleLogoutToLogin = () => {
+    setAuthUser(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY_AUTH);
+    } catch (_) {}
+    setCurrentTab('field');
+    setIsUserLoginOpen(true);
   };
 
   const handleSwitchToEmployee = () => {
@@ -580,10 +680,28 @@ export default function App() {
         language={language}
       />
 
-      {/* Top Header & Navigation */}
+      {/* Universal Navigation Action Bar (Always Available on EVERY Page) */}
+      <UniversalNavigationBar
+        currentTab={currentTab}
+        tabHistory={tabHistory}
+        onGoBack={handleGoBack}
+        onGoHome={handleGoHome}
+        onLogoutToLogin={handleLogoutToLogin}
+        onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+        onSelectTab={handleSelectTab}
+        authUser={authUser}
+        adminPassword={adminPassword}
+        language={language}
+        uiConfig={uiCustomization}
+      />
+
+      {/* Top Header & Navigation for System Admins */}
       <Header
         currentTab={currentTab}
         onSelectTab={handleSelectTab}
+        onGoBack={handleGoBack}
+        onGoHome={handleGoHome}
+        onLogoutToLogin={handleLogoutToLogin}
         isOffline={isOffline}
         onToggleOffline={() => setIsOffline(!isOffline)}
         offlineQueueCount={offlineQueue.length}
@@ -615,7 +733,7 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
-        {(currentTab === 'field' || authUser?.role === 'EMPLOYEE') && (
+        {currentTab === 'field' && (
           <FieldMobileView
             onSaveObservation={handleSaveObservation}
             isOffline={isOffline}
@@ -626,15 +744,19 @@ export default function App() {
             onOpenLiveStream={() => setIsLiveStreamOpen(true)}
             dropdownOptions={dropdownOptions}
             onOpenDropdownManager={authUser?.role === 'SYSTEM_ADMIN' ? () => setIsDropdownManagerOpen(true) : undefined}
-            onBack={() => handleSelectTab('management')}
+            onBack={handleGoBack}
+            onGoBack={handleGoBack}
+            onGoHome={handleGoHome}
+            onLogoutToLogin={handleLogoutToLogin}
             language={language}
             currentUserRole={authUser?.role || 'EMPLOYEE'}
             uiConfig={uiCustomization.workerPage}
             onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+            onOpenAiInspection={() => setIsAiInspectionOpen(true)}
           />
         )}
 
-        {currentTab === 'management' && authUser?.role !== 'EMPLOYEE' && (
+        {currentTab === 'management' && (
           <WebManagementView
             observations={observations}
             onUpdateObservation={handleUpdateObservation}
@@ -643,26 +765,53 @@ export default function App() {
             isOffHoursSimulated={isOffHoursSimulated}
             uiConfig={uiCustomization.directorPage}
             onSwitchToSystemAdmin={authUser?.role === 'SYSTEM_ADMIN' ? () => handleSelectTab('system_admin') : undefined}
+            onBack={handleGoBack}
+            onGoBack={handleGoBack}
+            onGoHome={handleGoHome}
+            onLogoutToLogin={handleLogoutToLogin}
+            onSwitchToEmployee={handleSwitchToEmployee}
+            onOpenAiInspection={() => setIsAiInspectionOpen(true)}
           />
         )}
 
-        {currentTab === 'heatmap' && authUser?.role !== 'EMPLOYEE' && (
-          <HotspotHeatmapView stations={stations} observations={observations} />
+        {currentTab === 'heatmap' && (
+          <HotspotHeatmapView
+            stations={stations}
+            observations={observations}
+            onBack={handleGoBack}
+            onGoBack={handleGoBack}
+            onGoHome={handleGoHome}
+            onLogoutToLogin={handleLogoutToLogin}
+          />
         )}
 
-        {currentTab === 'rootcause' && authUser?.role !== 'EMPLOYEE' && (
-          <RootCauseAnalyticsView observations={observations} />
+        {currentTab === 'rootcause' && (
+          <RootCauseAnalyticsView
+            observations={observations}
+            onBack={handleGoBack}
+            onGoBack={handleGoBack}
+            onGoHome={handleGoHome}
+            onLogoutToLogin={handleLogoutToLogin}
+          />
         )}
 
-        {currentTab === 'gamification' && authUser?.role !== 'EMPLOYEE' && (
-          <GamificationView users={INITIAL_USERS} currentUser={currentUser} />
+        {currentTab === 'gamification' && (
+          <GamificationView
+            users={INITIAL_USERS}
+            currentUser={currentUser}
+            onBack={handleGoBack}
+            onGoBack={handleGoBack}
+            onGoHome={handleGoHome}
+            onLogoutToLogin={handleLogoutToLogin}
+          />
         )}
 
-        {currentTab === 'system_admin' && authUser?.role === 'SYSTEM_ADMIN' && (
+        {currentTab === 'system_admin' && (
           <SystemAdminControlPanelView
             dropdownOptions={dropdownOptions}
             onOpenDropdownManager={() => setIsDropdownManagerOpen(true)}
             onOpenRadar={() => setIsRadarOpen(true)}
+            onOpenAiInspection={() => setIsAiInspectionOpen(true)}
             language={language}
             directorSecretCode={directorSecretCode}
             onUpdateDirectorPassword={(newPass) => setDirectorSecretCode(newPass)}
@@ -675,11 +824,18 @@ export default function App() {
             }}
             onOpenPointsRewardsManager={() => setIsRewardsControlOpen(true)}
             onOpenWeatherAdvisory={() => setIsWeatherModalOpen(true)}
-            onBack={() => handleSelectTab('management')}
+            onBack={handleGoBack}
+            onBackToField={handleGoHome}
+            onGoBack={handleGoBack}
+            onGoHome={handleGoHome}
+            onLogoutToLogin={handleLogoutToLogin}
             uiCustomization={uiCustomization}
             onUpdateUiCustomization={(updated) => setUiCustomization(updated)}
             onResetUiCustomization={handleResetUiCustomization}
             onSwitchToEmployee={handleSwitchToEmployee}
+            aiLibraryConfig={aiLibraryConfig}
+            onUpdateAiLibraryConfig={handleUpdateAiLibraryConfig}
+            onResetAiLibraryConfig={handleResetAiLibraryConfig}
           />
         )}
       </main>
@@ -755,6 +911,7 @@ export default function App() {
         }}
         language={language}
         directorSecretCode={directorSecretCode}
+        onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
       />
 
       {/* 3. Theme, Palette & Language Modal */}
@@ -920,6 +1077,19 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* 14. Industrial AI Computer Vision & Machine Hearing Inspection Center */}
+      <AiIndustrialInspectionCenter
+        isOpen={isAiInspectionOpen}
+        onClose={() => setIsAiInspectionOpen(false)}
+        onConvertToObservation={handleConvertInspectionToObservation}
+        language={language}
+        aiLibraryConfig={aiLibraryConfig}
+        onOpenLibraryManager={() => {
+          setIsAiInspectionOpen(false);
+          handleSelectTab('system_admin');
+        }}
+      />
     </div>
   );
 }

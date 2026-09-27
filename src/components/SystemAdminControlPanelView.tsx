@@ -22,15 +22,21 @@ import {
   CloudSun,
   LayoutDashboard,
   Smartphone,
+  LogOut,
+  Home,
+  RotateCcw,
 } from 'lucide-react';
 import { AppUiCustomization, DropdownOptionsMap, Language } from '../types';
+import { AiLibraryConfig } from '../types/aiInspection';
 import { AdminUiCustomizationSection } from './AdminUiCustomizationSection';
+import { AiLibraryManagerSection } from './AiLibraryManagerSection';
 import { StopSignLogo } from './StopSignLogo';
 
 interface SystemAdminControlPanelViewProps {
   dropdownOptions: DropdownOptionsMap;
   onOpenDropdownManager: () => void;
   onOpenRadar: () => void;
+  onOpenAiInspection?: () => void;
   language: Language;
   directorSecretCode: string;
   onUpdateDirectorPassword: (newPass: string) => void;
@@ -40,16 +46,24 @@ interface SystemAdminControlPanelViewProps {
   onOpenPointsRewardsManager?: () => void;
   onOpenWeatherAdvisory?: () => void;
   onBack?: () => void;
+  onBackToField?: () => void;
+  onGoBack?: () => void;
+  onGoHome?: () => void;
+  onLogoutToLogin?: () => void;
   uiCustomization?: AppUiCustomization;
   onUpdateUiCustomization?: (newConfig: AppUiCustomization) => void;
   onResetUiCustomization?: () => void;
   onSwitchToEmployee?: () => void;
+  aiLibraryConfig?: AiLibraryConfig;
+  onUpdateAiLibraryConfig?: (newConfig: AiLibraryConfig) => void;
+  onResetAiLibraryConfig?: () => void;
 }
 
 export const SystemAdminControlPanelView: React.FC<SystemAdminControlPanelViewProps> = ({
   dropdownOptions,
   onOpenDropdownManager,
   onOpenRadar,
+  onOpenAiInspection,
   language,
   directorSecretCode,
   onUpdateDirectorPassword,
@@ -59,10 +73,17 @@ export const SystemAdminControlPanelView: React.FC<SystemAdminControlPanelViewPr
   onOpenPointsRewardsManager,
   onOpenWeatherAdvisory,
   onBack,
+  onBackToField,
+  onGoBack,
+  onGoHome,
+  onLogoutToLogin,
   uiCustomization,
   onUpdateUiCustomization,
   onResetUiCustomization,
   onSwitchToEmployee,
+  aiLibraryConfig,
+  onUpdateAiLibraryConfig,
+  onResetAiLibraryConfig,
 }) => {
   const [radarSensitivity, setRadarSensitivity] = useState(85);
   const [thermalThreshold, setThermalThreshold] = useState(68);
@@ -169,39 +190,68 @@ export const SystemAdminControlPanelView: React.FC<SystemAdminControlPanelViewPr
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={handleAdoptNewView}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-200 border border-emerald-500/50 text-xs font-bold transition shadow-sm active:scale-95"
-            title="تثبيت واعتماد هذا الوضع كواجهة افتراضية دائمة للنظام"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>{adoptedNotice ? '✓ تم تأكيد واعتماد الوضع الجديد!' : 'تأكيد اعتماد الوضع الجديد'}</span>
-          </button>
-
-          {onSwitchToEmployee && (
+          {/* 1. زر التراجع للصفحة السابقة */}
+          {(onGoBack || onBack) && (
             <button
               type="button"
-              onClick={onSwitchToEmployee}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-blue-300 border border-slate-700 hover:border-blue-500/50 text-xs font-bold transition group"
-              title="معاينة شاشة الموظف الميداني (حيث يختفي هذا الشريط العلوي تماماً وتختفي كافة أيقونات الإدارة)"
+              onClick={onGoBack || onBack}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 hover:border-amber-500/40 text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              title="تراجع للصفحة السابقة"
             >
-              <Smartphone className="w-3.5 h-3.5 text-blue-400" />
-              <span>معاينة شاشة الموظف (خروج)</span>
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>تراجع للصفحة السابقة</span>
             </button>
           )}
 
+          {/* 2. زر العودة للرئيسية (Field App) */}
+          {(onGoHome || onBackToField || onSwitchToEmployee) && (
+            <button
+              type="button"
+              onClick={onGoHome || onBackToField || onSwitchToEmployee}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-200 border border-emerald-500/50 text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              title="العودة للصفحة الرئيسية (تطبيق الميدان)"
+            >
+              <Home className="w-3.5 h-3.5 text-emerald-400" />
+              <span>العودة للرئيسية</span>
+            </button>
+          )}
+
+          {/* 3. زر الخروج لشاشة الدخول */}
+          {(onLogoutToLogin || onSwitchToEmployee) && (
+            <button
+              type="button"
+              onClick={onLogoutToLogin || onSwitchToEmployee}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              title="تسجيل الخروج والعودة لشاشة الدخول"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span>الخروج لشاشة الدخول</span>
+            </button>
+          )}
+
+          {/* 4. Switch to HSE General Director Board */}
           {onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 text-xs font-bold transition group"
-              title="الانتقال إلى لوحة المدير العام"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition group"
+              title="الانتقال إلى لوحة المدير العام للسلامة"
             >
               <LayoutDashboard className="w-3.5 h-3.5 text-amber-400" />
-              <span>التبديل للوحة المدير العام (HSE Board)</span>
+              <span>لوحة المدير العام (HSE)</span>
             </button>
           )}
+
+          {/* 5. Adopt View */}
+          <button
+            type="button"
+            onClick={handleAdoptNewView}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 text-xs font-bold transition shadow-sm active:scale-95"
+            title="تثبيت واعتماد هذا الوضع كواجهة افتراضية دائمة للنظام"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{adoptedNotice ? '✓ تم الاعتماد!' : 'اعتماد الواجهة'}</span>
+          </button>
         </div>
       </div>
 
@@ -437,8 +487,48 @@ export const SystemAdminControlPanelView: React.FC<SystemAdminControlPanelViewPr
         />
       )}
 
+      {/* FEATURE: INDUSTRIAL AI COMPUTER VISION & ACOUSTIC MACHINE HEARING REFERENCE LIBRARY */}
+      {aiLibraryConfig && onUpdateAiLibraryConfig && (
+        <div className="space-y-4">
+          <AiLibraryManagerSection
+            config={aiLibraryConfig}
+            onUpdateConfig={onUpdateAiLibraryConfig}
+            onResetConfig={onResetAiLibraryConfig}
+          />
+        </div>
+      )}
+
       {/* Grid of Other Admin Tools */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Tool 0: Test Industrial AI Visual & Acoustic Center */}
+        {onOpenAiInspection && (
+          <div className="bg-gradient-to-br from-indigo-950/70 to-slate-900 rounded-3xl p-6 border-2 border-indigo-500/40 shadow-xl space-y-4 flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 flex items-center justify-center">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase">
+                  Live Testing Center
+                </span>
+                <h3 className="text-base font-bold text-white mt-1">اختبار مركز الرصد البصري والصوتي</h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  تشغيل الكاميرا والميكروفون لاختبار رصد تسريبات الغاز المرئية، الاهتزازات، التآكل، وبصمات الصوت الميكانيكية بالذكاء الاصطناعي.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onOpenAiInspection}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-950/50"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>تشغيل فحص الذكاء الاصطناعي الحي</span>
+            </button>
+          </div>
+        )}
+
         {/* Tool 1: Dropdown Options Manager (Exclusive to App Admin) */}
         <div className="bg-slate-900/90 rounded-3xl p-6 border border-purple-900/40 shadow-xl space-y-4 flex flex-col justify-between">
           <div className="space-y-3">

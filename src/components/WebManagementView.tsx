@@ -27,10 +27,15 @@ import {
   Video,
   ArrowRight,
   KeyRound,
+  Smartphone,
+  LogOut,
+  Home,
+  RotateCcw,
 } from 'lucide-react';
-import { AppUiCustomization, ReportStatus, SeverityLevel, StopObservation } from '../types';
+import { AppUiCustomization, ReportStatus, SeverityLevel, StopObservation, UserRole, Language } from '../types';
 import { exportToCSV, printExecutiveReport } from '../utils/exportUtils';
 import { TimeToClosureWidget } from './TimeToClosureWidget';
+import { ExecutiveReportModal } from './ExecutiveReportModal';
 
 interface WebManagementViewProps {
   observations: StopObservation[];
@@ -39,9 +44,16 @@ interface WebManagementViewProps {
   onOpenDropdownManager?: () => void;
   isOffHoursSimulated?: boolean;
   onBack?: () => void;
+  onGoBack?: () => void;
+  onGoHome?: () => void;
+  onLogoutToLogin?: () => void;
   onOpenChangePassword?: () => void;
   uiConfig?: AppUiCustomization['directorPage'];
   onSwitchToSystemAdmin?: () => void;
+  onSwitchToEmployee?: () => void;
+  currentUserRole?: UserRole;
+  language?: Language;
+  onOpenAiInspection?: () => void;
 }
 
 export const WebManagementView: React.FC<WebManagementViewProps> = ({
@@ -51,10 +63,18 @@ export const WebManagementView: React.FC<WebManagementViewProps> = ({
   onOpenDropdownManager,
   isOffHoursSimulated,
   onBack,
+  onGoBack,
+  onGoHome,
+  onLogoutToLogin,
   onOpenChangePassword,
   uiConfig,
   onSwitchToSystemAdmin,
+  onSwitchToEmployee,
+  currentUserRole = 'HSE_GENERAL_DIRECTOR',
+  language = 'ar',
+  onOpenAiInspection,
 }) => {
+  const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
@@ -121,8 +141,8 @@ export const WebManagementView: React.FC<WebManagementViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Return to New Modern System Admin Panel Banner */}
-      {onSwitchToSystemAdmin && (
+      {/* Return to New Modern System Admin Panel Banner (Strictly restricted to SYSTEM_ADMIN) */}
+      {onSwitchToSystemAdmin && currentUserRole === 'SYSTEM_ADMIN' && (
         <div className="bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 p-4 rounded-2xl border-2 border-purple-500/60 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center justify-center shrink-0">
@@ -155,19 +175,47 @@ export const WebManagementView: React.FC<WebManagementViewProps> = ({
 
       {/* Universal Page Back / Exit & Director Password Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-3 rounded-2xl shadow-sm">
-        <div className="flex items-center gap-2">
-          {onBack && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* 1. زر التراجع للصفحة السابقة */}
+          {(onGoBack || onBack) && (
             <button
               type="button"
-              onClick={onBack}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition group"
+              onClick={onGoBack || onBack}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 hover:border-amber-500/40 text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              title="تراجع للصفحة السابقة"
             >
-              <ArrowRight className="w-4 h-4 rtl:rotate-0 ltr:rotate-180 group-hover:-translate-x-1 transition-transform" />
-              <span>تراجع / رجوع للصفحة الرئيسية</span>
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>تراجع للصفحة السابقة</span>
             </button>
           )}
 
-          <div className="text-xs text-slate-400">
+          {/* 2. زر العودة للرئيسية */}
+          {(onGoHome || onBack) && (
+            <button
+              type="button"
+              onClick={onGoHome || onBack}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-200 border border-emerald-500/50 text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              title="العودة للصفحة الرئيسية (تطبيق الميدان)"
+            >
+              <Home className="w-3.5 h-3.5 text-emerald-400" />
+              <span>العودة للرئيسية</span>
+            </button>
+          )}
+
+          {/* 3. زر الخروج والعودة لشاشة الدخول */}
+          {(onLogoutToLogin || onSwitchToEmployee) && (
+            <button
+              type="button"
+              onClick={onLogoutToLogin || onSwitchToEmployee}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              title="تسجيل الخروج والعودة لشاشة تسجيل الدخول"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span>الخروج لشاشة الدخول</span>
+            </button>
+          )}
+
+          <div className="text-xs text-slate-400 hidden lg:block mr-2">
             أنت الآن في: <strong className="text-amber-400">لوحة القيادة والمتابعة العليا (HSE Management)</strong>
           </div>
         </div>
@@ -244,11 +292,24 @@ export const WebManagementView: React.FC<WebManagementViewProps> = ({
             {(uiConfig ? uiConfig.showPrintReportBtn : true) && (
               <button
                 type="button"
-                onClick={printExecutiveReport}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold shadow transition-colors"
+                onClick={() => setIsReportModalOpen(true)}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black shadow transition-colors cursor-pointer active:scale-95"
+                title="معاينة التقرير التنفيذي وتخصيص مخرجاته قبل الطباعة"
               >
-                <Printer className="w-4 h-4" />
-                <span>طباعة تقرير الإدارة (PDF)</span>
+                <Eye className="w-4 h-4" />
+                <span>معاينة وطباعة تقرير الإدارة (PDF)</span>
+              </button>
+            )}
+
+            {onOpenAiInspection && (
+              <button
+                type="button"
+                onClick={onOpenAiInspection}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-black shadow transition-colors cursor-pointer active:scale-95"
+                title="مركز الرصد البصري والصوتي بالذكاء الاصطناعي (Computer Vision & Machine Hearing)"
+              >
+                <Sparkles className="w-4 h-4 text-indigo-200" />
+                <span>الرصد البصري والصوتي (AI)</span>
               </button>
             )}
           </div>
@@ -785,6 +846,14 @@ export const WebManagementView: React.FC<WebManagementViewProps> = ({
           </button>
         </div>
       )}
+
+      {/* Executive Report Preview & Customization Modal for HSE General Director */}
+      <ExecutiveReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        observations={observations}
+        language={language}
+      />
     </div>
   );
 };

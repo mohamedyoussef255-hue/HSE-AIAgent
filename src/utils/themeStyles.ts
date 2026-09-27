@@ -668,64 +668,67 @@ export function generatePaletteCSS(palette: ColorPalette, mode: ThemeMode): stri
 
   return `
     :root {
+      --palette-icon-color: ${c.accentText};
+      --palette-accent-text: ${c.accentText};
       --palette-primary: ${c.primary};
       --palette-primary-hover: ${c.primaryHover};
-      --palette-primary-text: ${c.primaryText};
-      --palette-accent-text: ${c.accentText};
-      --palette-accent-bg: ${c.bgSubtle};
-      --palette-accent-border: ${c.borderAccent};
-      --palette-ring: ${c.ringAccent};
-      --palette-grad-from: ${c.gradientFrom};
-      --palette-grad-to: ${c.gradientTo};
-      --palette-badge-bg: ${c.badgeBg};
-      --palette-badge-text: ${c.badgeText};
     }
 
-    /* Live Overrides across entire App */
-    .bg-amber-500, .bg-amber-600 {
-      background-color: var(--palette-primary) !important;
-      color: var(--palette-primary-text) !important;
+    /* ========================================================================== */
+    /* بنتونة الألوان لا تغير الخلفيات بل فقط الأيقونات وليس أيضاً البنرات أو المسطرة */
+    /* ========================================================================== */
+
+    /* 1. تلوين الأيقونات داخل بطاقات المحتوى والمودالات بلون البنتونة */
+    main svg.lucide:not([data-preserve-color="true"]):not(.stop-sign-svg):not([data-stop-sign]):not(.text-rose-500):not(.text-red-500):not(.text-rose-400):not(.text-rose-600):not(.text-red-600),
+    div[role="dialog"] svg.lucide:not([data-preserve-color="true"]):not(.stop-sign-svg):not([data-stop-sign]):not(.text-rose-500):not(.text-red-500):not(.text-rose-400):not(.text-rose-600):not(.text-red-600),
+    .palette-icon,
+    [data-palette-icon="true"],
+    svg.text-amber-400:not([data-preserve-color="true"]):not(.stop-sign-svg),
+    svg.text-amber-300:not([data-preserve-color="true"]):not(.stop-sign-svg),
+    svg.text-amber-500:not([data-preserve-color="true"]):not(.stop-sign-svg) {
+      color: var(--palette-icon-color) !important;
+      stroke: var(--palette-icon-color) !important;
     }
-    .hover\\:bg-amber-400:hover, .hover\\:bg-amber-500:hover, .hover\\:bg-amber-300:hover {
-      background-color: var(--palette-primary-hover) !important;
+
+    /* 2. استثناء وحماية كاملة للمسطرة (Navigation Ruler): لا تتغير بالبنتونة */
+    [data-ruler="true"],
+    [data-ruler="true"] *,
+    header [data-ruler="true"],
+    header [data-ruler="true"] * {
+      /* Navigation Ruler remains neutral */
     }
-    .text-amber-400, .text-amber-300, .text-amber-500 {
-      color: var(--palette-accent-text) !important;
+    [data-ruler="true"] svg.lucide,
+    header [data-ruler="true"] svg.lucide {
+      color: inherit !important;
+      stroke: currentColor !important;
     }
-    .border-amber-500,
-    .border-amber-400,
-    .border-amber-500\\/40,
-    .border-amber-500\\/50,
-    .border-amber-500\\/30,
-    .border-amber-500\\/20,
-    .border-amber-500\\/60 {
-      border-color: var(--palette-accent-border) !important;
+
+    /* 3. استثناء وحماية كاملة للبنرات (Banners & Alerts): لا تتغير بالبنتونة */
+    [data-banner="true"],
+    [data-banner="true"] *,
+    .emergency-banner,
+    .emergency-banner * {
+      /* Banners remain fixed and immune */
     }
-    .bg-amber-500\\/10,
-    .bg-amber-500\\/15,
-    .bg-amber-500\\/20,
-    .bg-amber-500\\/25,
-    .bg-amber-500\\/30,
-    .bg-amber-500\\/40 {
-      background-color: var(--palette-accent-bg) !important;
+    [data-banner="true"] svg.lucide,
+    .emergency-banner svg.lucide {
+      color: inherit !important;
+      stroke: currentColor !important;
     }
-    .from-amber-600, .from-amber-500 {
-      --tw-gradient-from: var(--palette-grad-from) var(--tw-gradient-from-position, ) !important;
-    }
-    .to-amber-500, .to-amber-400 {
-      --tw-gradient-to: var(--palette-grad-to) var(--tw-gradient-to-position, ) !important;
-    }
-    .ring-amber-500, .ring-amber-400, .ring-amber-500\\/30, .ring-amber-400\\/30 {
-      --tw-ring-color: var(--palette-ring) !important;
-    }
-    .accent-amber-400, .accent-amber-500 {
-      accent-color: var(--palette-primary) !important;
+
+    /* 4. حماية شعار STOP الأيقوني وأيقونات الخطر الصريحة */
+    .stop-sign-svg,
+    .stop-sign-svg *,
+    .stop-sign-logo,
+    svg[data-stop-sign="true"] {
+      color: initial !important;
+      stroke: initial !important;
     }
 
     ${
       mode === 'light'
         ? `
-      /* Light Mode Crisp Styling */
+      /* Light Mode */
       body, #root {
         background-color: #f8fafc !important;
         color: #0f172a !important;
@@ -758,7 +761,7 @@ export function generatePaletteCSS(palette: ColorPalette, mode: ThemeMode): stri
       }
     `
         : `
-      /* Dark Mode Deep Contrast */
+      /* Dark Mode */
       body, #root {
         background-color: #020617 !important;
         color: #f8fafc !important;
@@ -767,3 +770,4 @@ export function generatePaletteCSS(palette: ColorPalette, mode: ThemeMode): stri
     }
   `;
 }
+

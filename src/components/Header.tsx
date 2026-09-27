@@ -28,6 +28,9 @@ import {
   Layers,
   CloudSun,
   Download,
+  LogOut,
+  RotateCcw,
+  Home,
 } from 'lucide-react';
 import { AuthUser, ColorPalette, Language, LiveIncidentStreamSession, SafetyUser, ThemeMode } from '../types';
 import { getT } from '../utils/translations';
@@ -38,6 +41,9 @@ export type NavTab = 'field' | 'management' | 'heatmap' | 'rootcause' | 'gamific
 interface HeaderProps {
   currentTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
+  onGoBack?: () => void;
+  onGoHome?: () => void;
+  onLogoutToLogin?: () => void;
   isOffline: boolean;
   onToggleOffline: () => void;
   offlineQueueCount: number;
@@ -70,6 +76,9 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   currentTab,
   onSelectTab,
+  onGoBack,
+  onGoHome,
+  onLogoutToLogin,
   isOffline,
   onToggleOffline,
   offlineQueueCount,
@@ -247,16 +256,42 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Global Action Header Items (Context Aware) */}
         <div className="flex flex-wrap items-center gap-2 self-stretch md:self-auto justify-end">
-          {/* Quick Switch to Field Employee Mode (Logout / Preview) */}
-          {onSwitchToEmployee && (
+          {/* 1. زر التراجع للصفحة السابقة */}
+          {onGoBack && (
             <button
               type="button"
-              onClick={onSwitchToEmployee}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-blue-300 border border-slate-700 hover:border-blue-500/50 rounded-xl text-xs font-bold transition shadow-sm"
-              title="معاينة شاشة وتطبيق الموظف الميداني (حيث يختفي هذا الشريط العلوي تماماً وتختفي كافة أيقونات الإدارة)"
+              onClick={onGoBack}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-700 hover:border-amber-500/40 rounded-xl text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              title="تراجع للصفحة السابقة"
             >
-              <Smartphone className="w-3.5 h-3.5 text-blue-400" />
-              <span>معاينة شاشة الموظف (خروج)</span>
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>تراجع</span>
+            </button>
+          )}
+
+          {/* 2. زر العودة للرئيسية */}
+          {(onGoHome || currentTab !== 'field') && (
+            <button
+              type="button"
+              onClick={onGoHome || (() => onSelectTab('field'))}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-200 border border-emerald-500/50 rounded-xl text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              title="العودة للصفحة الرئيسية (تطبيق الميدان)"
+            >
+              <Home className="w-3.5 h-3.5 text-emerald-400" />
+              <span>الرئيسية</span>
+            </button>
+          )}
+
+          {/* 3. زر الخروج لشاشة الدخول */}
+          {(onLogoutToLogin || onSwitchToEmployee) && (
+            <button
+              type="button"
+              onClick={onLogoutToLogin || onSwitchToEmployee}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-950/70 hover:bg-rose-900/90 text-rose-300 border border-rose-800/80 rounded-xl text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              title="تسجيل الخروج والعودة لشاشة الدخول"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span>خروج لدخول</span>
             </button>
           )}
 
@@ -363,7 +398,10 @@ export const Header: React.FC<HeaderProps> = ({
       {/* ========================================================================= */}
       {/* SYSTEM ADMIN MAIN NAVIGATION BAR (المسطرة الرئيسية لمدير التطبيق) */}
       {/* ========================================================================= */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar py-1.5 border-t border-slate-900">
+      <div 
+        data-ruler="true"
+        className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar py-1.5 border-t border-slate-900 bg-slate-950/90"
+      >
         <div className="flex items-center gap-1.5">
           {sysAdminTabs.map((tab) => {
             const isActive = currentTab === tab.id;
@@ -374,10 +412,8 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={() => onSelectTab(tab.id)}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   isActive
-                    ? tab.id === 'system_admin'
-                      ? 'bg-purple-600 text-white shadow-md font-black'
-                      : 'bg-amber-500 text-slate-950 shadow-md font-black'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                    ? 'bg-slate-800 text-white border border-slate-700 shadow-md font-black'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent'
                 }`}
               >
                 {tab.icon}
@@ -392,9 +428,9 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenHistoryLog}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition whitespace-nowrap"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold transition whitespace-nowrap"
             >
-              <Video className="w-3.5 h-3.5 text-amber-400" />
+              <Video className="w-3.5 h-3.5 text-slate-300" />
               <span>مكتبة سجل رصد الكاميرا</span>
             </button>
           )}
@@ -403,9 +439,9 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenChat}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition whitespace-nowrap"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold transition whitespace-nowrap"
             >
-              <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+              <MessageSquare className="w-3.5 h-3.5 text-slate-300" />
               <span>الشات</span>
             </button>
           )}

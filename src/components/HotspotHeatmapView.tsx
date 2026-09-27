@@ -16,6 +16,9 @@ import {
   User,
   Zap,
   ArrowRight,
+  Home,
+  LogOut,
+  RotateCcw,
 } from 'lucide-react';
 import { HeatmapStation, StopObservation } from '../types';
 
@@ -24,12 +27,18 @@ interface HotspotHeatmapViewProps {
   observations: StopObservation[];
   onSelectStationFilter?: (stationName: string) => void;
   onBack?: () => void;
+  onGoBack?: () => void;
+  onGoHome?: () => void;
+  onLogoutToLogin?: () => void;
 }
 
 export const HotspotHeatmapView: React.FC<HotspotHeatmapViewProps> = ({
   stations,
   observations,
   onBack,
+  onGoBack,
+  onGoHome,
+  onLogoutToLogin,
 }) => {
   const [selectedStation, setSelectedStation] = useState<HeatmapStation>(stations[0]);
   const [dispatchedStationId, setDispatchedStationId] = useState<string | null>(null);
@@ -50,17 +59,47 @@ export const HotspotHeatmapView: React.FC<HotspotHeatmapViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Universal Page Back / Exit Bar */}
-      <div className="flex items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-3 rounded-2xl shadow-sm">
-        {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-amber-500/40 text-xs font-bold transition group"
-          >
-            <ArrowRight className="w-4 h-4 rtl:rotate-0 ltr:rotate-180 group-hover:-translate-x-1 transition-transform text-amber-400" />
-            <span>تراجع / رجوع للصفحة الرئيسية</span>
-          </button>
-        ) : <div />}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-3 rounded-2xl shadow-sm">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* 1. زر التراجع للصفحة السابقة */}
+          {(onGoBack || onBack) && (
+            <button
+              type="button"
+              onClick={onGoBack || onBack}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 hover:border-amber-500/40 text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              title="تراجع للصفحة السابقة"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>تراجع للصفحة السابقة</span>
+            </button>
+          )}
+
+          {/* 2. زر العودة للرئيسية */}
+          {(onGoHome || onBack) && (
+            <button
+              type="button"
+              onClick={onGoHome || onBack}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-200 border border-emerald-500/50 text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              title="العودة للصفحة الرئيسية (تطبيق الميدان)"
+            >
+              <Home className="w-3.5 h-3.5 text-emerald-400" />
+              <span>العودة للرئيسية</span>
+            </button>
+          )}
+
+          {/* 3. زر الخروج لشاشة الدخول */}
+          {onLogoutToLogin && (
+            <button
+              type="button"
+              onClick={onLogoutToLogin}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              title="تسجيل الخروج والعودة لشاشة الدخول"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span>الخروج لشاشة الدخول</span>
+            </button>
+          )}
+        </div>
 
         <div className="text-xs text-slate-400">
           أنت الآن في: <strong className="text-rose-400">خرائط النقاط الساخنة للمواقع (Heatmap)</strong>
